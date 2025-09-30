@@ -12,18 +12,21 @@
             button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Gerando...';
             result.innerText = 'Processando...';
 
-            fetch('/generate', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    result.innerText = data.bilhetes.join('\n\n') + '\n\nStatus: ' + data.status;
-                    button.disabled = false;
-                    button.innerHTML = 'Gerar Bilhetes';
-                })
-                .catch(error => {
-                    result.innerText = 'Erro: ' + error;
-                    button.disabled = false;
-                    button.innerHTML = 'Gerar Bilhetes';
-                });
+            // URL completa da API no Render
+            fetch('https://bet1-xwgi.onrender.com/generate', { 
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                result.innerText = data.bilhetes.join('\n\n') + '\n\nStatus: ' + data.status;
+                button.disabled = false;
+                button.innerHTML = 'Gerar Bilhetes';
+            })
+            .catch(error => {
+                result.innerText = 'Erro: ' + error;
+                button.disabled = false;
+                button.innerHTML = 'Gerar Bilhetes';
+            });
         }
     </script>
 </head>
