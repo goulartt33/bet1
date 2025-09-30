@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Bot de Apostas</title>
+</head>
+<body>
+  <h1>📊 Bot de Apostas</h1>
+  <button onclick="loadOdds()">Carregar Odds</button>
+  <pre id="output"></pre>
+
+  <script>
+    async function loadOdds() {
+      // Troque pelo link do Render quando publicar
+      const response = await fetch("https://SEU_BACKEND.onrender.com/odds");
+      const data = await response.json();
+      document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
+

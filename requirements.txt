@@ -1,0 +1,12 @@
+<<<<<<< HEAD
+flask
+gunicorn
+requests
+python-dotenv
+=======
+Flask==3.0.0
+Flask-Cors==3.0.10
+requests==2.32.5
+python-telegram-bot==20.3
+gunicorn==21.2.0
+>>>>>>> aac2780dcdd8b1644422a30500cd62d56010ea9e
