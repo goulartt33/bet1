@@ -1,59 +1,40 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, render_template, jsonify
 import os
-from telegram import Bot
-from telegram.error import TelegramError
-
-app = Flask(__name__)
+import requests
+from dotenv import load_dotenv
 
 # Carregar variáveis de ambiente
+load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-bot = Bot(token=TELEGRAM_TOKEN)
+app = Flask(__name__)
 
-# Dados simulados de bilhetes (substitua pela sua lógica real)
-bilhetes = [
-    {
-        "jogo": "Flamengo vs Palmeiras",
-        "data": "12/10/2025 20:00",
-        "spread": {"Flamengo": -1.5, "Palmeiras": 1.5},
-        "total": {"over": 2.5, "under": 2.5},
-        "conf": 0.85
-    },
-    {
-        "jogo": "Atlético MG vs Santos",
-        "data": "12/10/2025 21:00",
-        "spread": {"Atlético MG": 0.0, "Santos": 0.0},
-        "total": {"over": 1.5, "under": 1.5},
-        "conf": 0.72
-    }
-]
-
+# Rota principal
 @app.route('/')
-def index():
+def home():
     return render_template('index.html')
 
-@app.route('/bilhetes')
-def get_bilhetes():
-    return jsonify(bilhetes)
-
-@app.route('/enviar_telegram', methods=['POST'])
-def enviar_telegram():
-    data = request.get_json()
-    bilhetes_enviar = data.get('bilhetes', [])
-    mensagem = "📊 *Bilhetes Automáticos*\n\n"
-
-    for b in bilhetes_enviar:
-        mensagem += f"🏟️ {b['jogo']} ({b['data']})\n"
-        mensagem += f"📈 Spread: {b['spread']}\n"
-        mensagem += f"🔢 Total: {b['total']}\n"
-        mensagem += f"💡 Confiança: {b['conf']}\n\n"
-
+# Rota para buscar oportunidades e enviar Telegram
+@app.route('/buscar', methods=['POST'])
+def buscar_oportunidades():
     try:
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensagem, parse_mode="Markdown")
-        return jsonify({"status": "success", "message": "Bilhetes enviados para o Telegram!"})
-    except TelegramError as e:
-        return jsonify({"status": "error", "message": f"Erro ao enviar Telegram: {str(e)}"}), 500
+        # Aqui você pode colocar a lógica real de busca de oportunidades
+        mensagem = "⚽ Novas oportunidades de apostas disponíveis!"
+        
+        # Enviar mensagem para Telegram
+        url_telegram = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": mensagem,
+            "parse_mode": "HTML"
+        }
+        response = requests.post(url_telegram, data=payload)
+        response.raise_for_status()
+        
+        return jsonify({"status": "sucesso", "mensagem": "Mensagem enviada para o Telegram!"})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True, host='127.0.0.1', port=5000)
