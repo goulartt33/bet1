@@ -1,97 +1,66 @@
 # app.py
-from flask import Flask, jsonify, request, send_from_directory
 import os
+from flask import Flask, render_template, request, jsonify
 import requests
 from telegram import Bot
-from datetime import datetime
 
-app = Flask(__name__, static_folder="frontend", static_url_path="")
+# Configurações Flask
+app = Flask(__name__, template_folder='frontend')
 
-# Configurações do Telegram
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+# Carregar variáveis de ambiente
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
+
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Configuração Football-Data API
-FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY")
-BASE_URL = "https://api.football-data.org/v4/"
-
-# Servir front-end
-@app.route("/")
-def index():
-    return send_from_directory("frontend", "index.html")
-
-# Função para obter jogos do dia
-def get_todays_matches():
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+# Função para buscar oportunidades reais (exemplo: últimas partidas e estatísticas)
+def buscar_oportunidades():
+    url = "https://api.football-data.org/v4/matches?status=SCHEDULED"  # Exemplo de endpoint
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
-    url = f"{BASE_URL}matches?dateFrom={today}&dateTo={today}"
+    
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
-        return []
-    return response.json().get("matches", [])
-
-# Função para gerar bilhete profissional
-def generate_bilhetes():
-    matches = get_todays_matches()
+        return None
+    
+    data = response.json()
     bilhetes = []
-
-    for match in matches:
+    
+    # Montar bilhetes de exemplo (você pode detalhar mais: escanteios, finalizações, etc.)
+    for match in data.get("matches", [])[:5]:  # pegar apenas os 5 primeiros jogos
         home = match["homeTeam"]["name"]
         away = match["awayTeam"]["name"]
-        favorito = home  # simplificação: considerar o time da casa favorito
-        jogo = f"{home} vs {away}"
-        hora = datetime.strptime(match["utcDate"], "%Y-%m-%dT%H:%M:%SZ").strftime("%H:%M")
-
-        # Simulação de estatísticas (você pode conectar a API real de estatísticas detalhadas)
-        escanteios = 10
-        finalizacoes_1T = 5
-        finalizacoes_2T = 4
-        conf = 0.7  # confiança baseada em histórico ou algoritmo
-
-        bilhete = {
-            "jogo": jogo,
-            "data": hora,
-            "favorito": favorito,
-            "resultado": "Vitória ou Empate",
-            "escanteios": escanteios,
-            "finalizacoes_1T": finalizacoes_1T,
-            "finalizacoes_2T": finalizacoes_2T,
-            "conf": conf
-        }
+        time = home  # exemplo: favorito é o time da casa
+        bilhete = (
+            f"⚽ {home} vs {away} ({match['utcDate'][:16]} UTC)\n"
+            f"🏆 Vitória ou Empate do favorito: {time}\n"
+            f"🔢 Escanteios: +9.5\n"
+            f"🎯 Finalizações 1T: +4.5 | 2T: +3.5\n"
+        )
         bilhetes.append(bilhete)
-
     return bilhetes
 
-# Endpoint para retornar bilhetes
-@app.route("/bilhetes")
-def bilhetes():
-    try:
-        bilhetes = generate_bilhetes()
-        return jsonify(bilhetes)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Rota principal
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-# Endpoint para enviar bilhetes ao Telegram
-@app.route("/send-telegram", methods=["POST"])
-def send_telegram():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Nenhum bilhete recebido"}), 400
+# Rota para buscar oportunidades e enviar Telegram
+@app.route('/buscar', methods=['POST'])
+def buscar():
+    bilhetes = buscar_oportunidades()
+    if not bilhetes:
+        return jsonify({"status": "erro", "msg": "Erro ao carregar bilhetes"}), 500
+    
     try:
-        for b in data:
-            message = (
-                f"🎯 {b['resultado']} do favorito: {b['favorito']}\n"
-                f"⚽ {b['jogo']} ({b['data']})\n"
-                f"📊 Escanteios do time: {b['escanteios']}\n"
-                f"🔢 Finalizações 1T: {b['finalizacoes_1T']} | 2T: {b['finalizacoes_2T']}\n"
-                f"💡 Confiança: {b['conf']*100:.1f}%"
-            )
-            bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-        return jsonify({"status": "Mensagens enviadas com sucesso"})
+        for b in bilhetes:
+            bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=b)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "erro", "msg": f"Erro ao enviar Telegram: {e}"}), 500
 
+    return jsonify({"status": "sucesso", "msg": "Bilhetes enviados com sucesso!"})
+
+# Rodar app
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True, host="0.0.0.0", port=port)
