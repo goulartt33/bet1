@@ -5,78 +5,135 @@
   <title>📊 Bot de Apostas</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
-    body { background: linear-gradient(to right, #ff6b6b, #f7d794); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    h1 { color: #fff; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); text-align: center; }
-    #bilhetes { width: 100%; max-width: 700px; }
-    .bilhete { background-color: rgba(255,255,255,0.9); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s; }
-    .bilhete:hover { transform: translateY(-3px); }
-    .title { font-weight: 700; font-size: 18px; color: #333; margin-bottom: 8px; }
-    .info { margin-bottom: 5px; color: #555; }
-    .btn { margin-top: 20px; background-color: #4cd137; color: #fff; border: none; padding: 15px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all 0.3s; }
-    .btn:hover { background-color: #44bd32; transform: scale(1.05); }
-    .loading { text-align: center; font-size: 18px; color: #fff; margin-top: 20px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #ff5f6d, #ffc371);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    #bilhetes {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .bilhete {
+      background: #fff;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .bilhete:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+    .title {
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #ff5f6d;
+    }
+    .conf-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: #ffc371;
+      margin-top: 5px;
+      transition: width 0.3s;
+    }
+    .btn {
+      background: #ff5f6d;
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 50px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .btn:hover {
+      background: #ffc371;
+      color: #333;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+    }
+    .loading {
+      color: #fff;
+      text-align: center;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
   <h1>📊 Bot de Apostas - Bilhetes Automáticos</h1>
-  
-  <div id="bilhetes" class="loading">Carregando bilhetes...</div>
 
-  <button class="btn" onclick="enviarTelegram()">📩 Buscar Oportunidades</button>
+  <div id="bilhetes">
+    <div class="loading">Carregando bilhetes...</div>
+  </div>
+
+  <button class="btn" onclick="enviarTelegram()">📩 Buscar Oportunidades e Enviar ao Telegram</button>
 
   <script>
-    let bilhetesData = [];
+    let bilhetes = [];
 
     async function carregarBilhetes() {
       try {
-        const res = await fetch('https://bet-2-3uvv.onrender.com/bilhetes');
-        const data = await res.json();
-        bilhetesData = data;
-
+        const res = await fetch('/bilhetes');
+        bilhetes = await res.json();
         const container = document.getElementById('bilhetes');
-        container.innerHTML = ''; 
-
-        if (data.length === 0) {
-          container.innerHTML = '<div class="loading">Nenhum bilhete disponível.</div>';
-          return;
-        }
-
-        data.forEach(b => {
+        container.innerHTML = '';
+        bilhetes.forEach(b => {
           const div = document.createElement('div');
           div.className = 'bilhete';
           div.innerHTML = `
             <div class="title">${b.jogo} (${b.data})</div>
-            <div class="info">Spread: ${JSON.stringify(b.spread)}</div>
-            <div class="info">Total: ${JSON.stringify(b.total)}</div>
-            <div class="info">Confiança: ${b.conf}</div>
+            <div>📈 Spread: ${JSON.stringify(b.spread)}</div>
+            <div>🔢 Total: ${JSON.stringify(b.total)}</div>
+            <div>💡 Confiança: ${b.conf}</div>
+            <div class="conf-bar" style="width: ${b.conf*100}%"></div>
           `;
           container.appendChild(div);
         });
       } catch (err) {
-        document.getElementById('bilhetes').innerText = 'Erro ao carregar bilhetes.';
+        document.getElementById('bilhetes').innerHTML = '<div class="loading">Erro ao carregar bilhetes.</div>';
         console.error(err);
       }
     }
 
     async function enviarTelegram() {
-      if (!bilhetesData || bilhetesData.length === 0) {
+      if(bilhetes.length === 0) {
         alert("Nenhum bilhete disponível para enviar!");
         return;
       }
 
       try {
-        const res = await fetch('https://bet-2-3uvv.onrender.com/enviar_telegram', {
+        const res = await fetch('/enviar_telegram', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bilhetes: bilhetesData })
+          body: JSON.stringify({ bilhetes })
         });
 
-        const result = await res.json();
-        alert(result.message || "Bilhetes enviados ao Telegram com sucesso!");
+        const data = await res.json();
+        alert(data.message);
       } catch (err) {
         console.error(err);
-        alert("Erro ao enviar bilhetes para o Telegram.");
+        alert("Erro ao enviar os bilhetes para o Telegram.");
       }
     }
 
