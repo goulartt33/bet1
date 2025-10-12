@@ -1,143 +1,74 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>📊 Bot de Apostas</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #ff5f6d, #ffc371);
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    h1 {
-      margin-bottom: 20px;
-      color: #fff;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-      text-align: center;
-    }
-    #bilhetes {
-      width: 100%;
-      max-width: 700px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-    .bilhete {
-      background: #fff;
-      padding: 15px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .bilhete:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-    }
-    .title {
-      font-weight: 700;
-      font-size: 18px;
-      margin-bottom: 8px;
-      color: #ff5f6d;
-    }
-    .conf-bar {
-      height: 8px;
-      border-radius: 4px;
-      background: #ffc371;
-      margin-top: 5px;
-      transition: width 0.3s;
-    }
-    .btn {
-      background: #ff5f6d;
-      color: #fff;
-      border: none;
-      padding: 12px 25px;
-      border-radius: 50px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    .btn:hover {
-      background: #ffc371;
-      color: #333;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-    }
-    .loading {
-      color: #fff;
-      text-align: center;
-      font-size: 18px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FootBet Pro - Apostas de Futebol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { box-sizing: border-box; }
+        .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #047857 50%, #22c55e 100%); }
+        .gradient-card { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); }
+        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-hover:hover { transform: translateY(-8px); box-shadow: 0 25px 50px rgba(6, 78, 59, 0.15); }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        .floating { animation: floating 4s ease-in-out infinite; }
+        @keyframes floating { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+        .field-pattern { background-image: linear-gradient(90deg, rgba(34,197,94,0.1) 50%, transparent 50%), linear-gradient(rgba(34,197,94,0.1) 50%, transparent 50%); background-size: 20px 20px; }
+        .glass-effect { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }
+    </style>
 </head>
-<body>
-  <h1>📊 Bot de Apostas - Bilhetes Automáticos</h1>
+<body class="min-h-full bg-green-100">
 
-  <div id="bilhetes">
-    <div class="loading">Carregando bilhetes...</div>
-  </div>
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-2xl">
+        <nav class="container mx-auto px-6 py-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                        <span class="text-green-600 font-bold text-2xl">⚽</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">FootBet Pro</h1>
+                        <p class="text-xs text-green-200">Apostas de Futebol</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#" class="hover:text-green-200 transition-colors font-medium">Campeonatos</a>
+                    <a href="#" class="hover:text-green-200 transition-colors font-medium">Ao Vivo</a>
+                    <a href="#" class="hover:text-green-200 transition-colors font-medium">Estatísticas</a>
+                    <a href="#" class="hover:text-green-200 transition-colors font-medium">Promoções</a>
+                </div>
+                <div class="flex space-x-3">
+                    <button class="glass-effect text-white px-6 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-20 transition-all">Entrar</button>
+                    <button class="bg-gradient-to-r from-green-500 to-green-700 px-6 py-2 rounded-lg font-semibold hover:from-green-400 hover:to-green-600 transition-all shadow-lg">Cadastrar</button>
+                </div>
+            </div>
+        </nav>
+    </header>
 
-  <button class="btn" onclick="enviarTelegram()">📩 Buscar Oportunidades e Enviar ao Telegram</button>
+    <!-- Hero Section -->
+    <section class="gradient-bg field-pattern text-white py-24 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-green-900/20 to-green-800/20"></div>
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <div class="floating">
+                <h2 class="text-5xl md:text-7xl font-bold mb-8 leading-tight">
+                    O Melhor do<br>
+                    <span class="bg-gradient-to-r from-green-300 to-green-100 bg-clip-text text-transparent">Futebol Mundial</span>
+                </h2>
+            </div>
+            <p class="text-xl md:text-2xl mb-16 max-w-3xl mx-auto opacity-95 leading-relaxed">
+                Apostas profissionais em todos os campeonatos. Odds premium, análises detalhadas e transmissões ao vivo dos melhores jogos.
+            </p>
+            <button onclick="searchOpportunities()" class="pulse-animation bg-gradient-to-r from-green-400 via-green-500 to-green-600 text-white px-16 py-8 rounded-2xl text-2xl md:text-3xl font-bold shadow-2xl hover:from-green-300 hover:via-green-400 hover:to-green-500 transition-all duration-300 transform hover:scale-105 border-2 border-white/20">⚽ Buscar Oportunidades</button>
+        </div>
+    </section>
 
-  <script>
-    let bilhetes = [];
-
-    async function carregarBilhetes() {
-      try {
-        const res = await fetch('/bilhetes');
-        bilhetes = await res.json();
-        const container = document.getElementById('bilhetes');
-        container.innerHTML = '';
-        bilhetes.forEach(b => {
-          const div = document.createElement('div');
-          div.className = 'bilhete';
-          div.innerHTML = `
-            <div class="title">${b.jogo} (${b.data})</div>
-            <div>📈 Spread: ${JSON.stringify(b.spread)}</div>
-            <div>🔢 Total: ${JSON.stringify(b.total)}</div>
-            <div>💡 Confiança: ${b.conf}</div>
-            <div class="conf-bar" style="width: ${b.conf*100}%"></div>
-          `;
-          container.appendChild(div);
-        });
-      } catch (err) {
-        document.getElementById('bilhetes').innerHTML = '<div class="loading">Erro ao carregar bilhetes.</div>';
-        console.error(err);
-      }
-    }
-
-    async function enviarTelegram() {
-      if(bilhetes.length === 0) {
-        alert("Nenhum bilhete disponível para enviar!");
-        return;
-      }
-
-      try {
-        const res = await fetch('/enviar_telegram', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bilhetes })
-        });
-
-        const data = await res.json();
-        alert(data.message);
-      } catch (err) {
-        console.error(err);
-        alert("Erro ao enviar os bilhetes para o Telegram.");
-      }
-    }
-
-    carregarBilhetes();
-  </script>
+    <script>
+        function searchOpportunities() {
+            alert("Buscando oportunidades de apostas...");
+        }
+    </script>
 </body>
 </html>
