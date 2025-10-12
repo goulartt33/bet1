@@ -1,41 +1,86 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Sistema de Apostas Certeiras</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script>
-        function generateBilhetes() {
-            const button = document.getElementById('generateBtn');
-            const result = document.getElementById('result');
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Gerando...';
-            result.innerText = 'Processando...';
-
-            // URL completa da API no Render
-            fetch('https://bet1-xwgi.onrender.com/generate', { 
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                result.innerText = data.bilhetes.join('\n\n') + '\n\nStatus: ' + data.status;
-                button.disabled = false;
-                button.innerHTML = 'Gerar Bilhetes';
-            })
-            .catch(error => {
-                result.innerText = 'Erro: ' + error;
-                button.disabled = false;
-                button.innerHTML = 'Gerar Bilhetes';
-            });
-        }
-    </script>
+  <meta charset="UTF-8">
+  <title>📊 Bot de Apostas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+    body { background: linear-gradient(to right, #ff6b6b, #f7d794); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    h1 { color: #fff; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); text-align: center; }
+    #bilhetes { width: 100%; max-width: 700px; }
+    .bilhete { background-color: rgba(255,255,255,0.9); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s; }
+    .bilhete:hover { transform: translateY(-3px); }
+    .title { font-weight: 700; font-size: 18px; color: #333; margin-bottom: 8px; }
+    .info { margin-bottom: 5px; color: #555; }
+    .btn { margin-top: 20px; background-color: #4cd137; color: #fff; border: none; padding: 15px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all 0.3s; }
+    .btn:hover { background-color: #44bd32; transform: scale(1.05); }
+    .loading { text-align: center; font-size: 18px; color: #fff; margin-top: 20px; }
+  </style>
 </head>
-<body class="container mt-5">
-    <h1 class="text-center">Sistema de Apostas Certeiras</h1>
-    <p class="text-center">Clique para gerar bilhetes com odds >= 2.0 e prob > 60% (configurável). Envia para Telegram automaticamente.</p>
-    <div class="text-center">
-        <button id="generateBtn" class="btn btn-primary" onclick="generateBilhetes()">Gerar Bilhetes</button>
-    </div>
-    <pre id="result" class="mt-4 p-3 border bg-light">Resultado aparecerá aqui...</pre>
+<body>
+  <h1>📊 Bot de Apostas - Bilhetes Automáticos</h1>
+  
+  <div id="bilhetes" class="loading">Carregando bilhetes...</div>
+
+  <button class="btn" onclick="enviarTelegram()">📩 Buscar Oportunidades</button>
+
+  <script>
+    let bilhetesData = [];
+
+    async function carregarBilhetes() {
+      try {
+        const res = await fetch('https://bet-2-3uvv.onrender.com/bilhetes');
+        const data = await res.json();
+        bilhetesData = data;
+
+        const container = document.getElementById('bilhetes');
+        container.innerHTML = ''; 
+
+        if (data.length === 0) {
+          container.innerHTML = '<div class="loading">Nenhum bilhete disponível.</div>';
+          return;
+        }
+
+        data.forEach(b => {
+          const div = document.createElement('div');
+          div.className = 'bilhete';
+          div.innerHTML = `
+            <div class="title">${b.jogo} (${b.data})</div>
+            <div class="info">Spread: ${JSON.stringify(b.spread)}</div>
+            <div class="info">Total: ${JSON.stringify(b.total)}</div>
+            <div class="info">Confiança: ${b.conf}</div>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        document.getElementById('bilhetes').innerText = 'Erro ao carregar bilhetes.';
+        console.error(err);
+      }
+    }
+
+    async function enviarTelegram() {
+      if (!bilhetesData || bilhetesData.length === 0) {
+        alert("Nenhum bilhete disponível para enviar!");
+        return;
+      }
+
+      try {
+        const res = await fetch('https://bet-2-3uvv.onrender.com/enviar_telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bilhetes: bilhetesData })
+        });
+
+        const result = await res.json();
+        alert(result.message || "Bilhetes enviados ao Telegram com sucesso!");
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao enviar bilhetes para o Telegram.");
+      }
+    }
+
+    carregarBilhetes();
+  </script>
 </body>
 </html>
