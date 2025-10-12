@@ -1,121 +1,109 @@
-from flask import Flask, jsonify
 import os
 import requests
+from flask import Flask, jsonify
 from telegram import Bot
 from dotenv import load_dotenv
 
-# === Carregar variáveis do ambiente (.env) ===
+# Carregar variáveis de ambiente
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 
-app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
+app = Flask(__name__)
+HEADERS = {"X-Auth-Token": FOOTBALL_API_KEY}
 
-# =====================================================
-# FUNÇÃO PARA OBTER ESTATÍSTICAS REAIS DE CADA TIME
-# =====================================================
-def get_team_stats(team_id):
-    """Busca estatísticas dos últimos 5 jogos do time via API football-data.org"""
-    url = f"https://api.football-data.org/v4/teams/{team_id}/matches?status=FINISHED&limit=5"
-    headers = {"X-Auth-Token": FOOTBALL_API_KEY}
+# Função para pegar últimos 5 jogos de um time
+def get_last_5_matches(team_id):
+    url = f"https://api.football-data.org/v4/teams/{team_id}/matches?limit=5"
+    response = requests.get(url, headers=HEADERS)
+    if response.status_code != 200:
+        return []
+    data = response.json()
+    matches = []
 
-    res = requests.get(url, headers=headers)
-    if res.status_code != 200:
-        print(f"Erro ao buscar dados para o time {team_id}: {res.text}")
-        return None
+    for match in data.get("matches", []):
+        home = match["homeTeam"]["id"]
+        away = match["awayTeam"]["id"]
+        home_score = match["score"]["fullTime"]["home"]
+        away_score = match["score"]["fullTime"]["away"]
 
-    data = res.json().get("matches", [])
-    if not data:
-        return None
+        is_home = team_id == home
+        matches.append({
+            "goals_for": home_score if is_home else away_score,
+            "goals_against": away_score if is_home else home_score,
+            "corners": 3,  # Exemplo fixo, pode integrar API real de corners
+            "shots": 5,    # Exemplo fixo
+            "cards": 1     # Exemplo fixo
+        })
+    return matches
 
-    gols, gols_contra, vitorias = 0, 0, 0
-    escanteios, finalizacoes, cartoes = 0, 0, 0  # placeholders, pois API não fornece diretamente
+# Função para calcular médias e sugerir apostas
+def analyze_team(team_id):
+    last_matches = get_last_5_matches(team_id)
+    if not last_matches:
+        return {}
 
-    for match in data:
-        home = match["homeTeam"]["id"] == team_id
-        score_for = match["score"]["fullTime"]["home"] if home else match["score"]["fullTime"]["away"]
-        score_against = match["score"]["fullTime"]["away"] if home else match["score"]["fullTime"]["home"]
+    total_goals = sum(m["goals_for"] for m in last_matches)
+    total_corners = sum(m["corners"] for m in last_matches)
+    total_shots = sum(m["shots"] for m in last_matches)
+    total_cards = sum(m["cards"] for m in last_matches)
 
-        if score_for > score_against:
-            vitorias += 1
+    avg_goals = total_goals / len(last_matches)
+    avg_corners = total_corners / len(last_matches)
+    avg_shots = total_shots / len(last_matches)
+    avg_cards = total_cards / len(last_matches)
 
-        gols += score_for
-        gols_contra += score_against
-        escanteios += 4.5  # média simulada
-        finalizacoes += 7.2  # média simulada
-        cartoes += 1.8  # média simulada
-
-    jogos = len(data)
     return {
-        "vitorias": vitorias,
-        "gols_m": round(gols / jogos, 2),
-        "gols_contra_m": round(gols_contra / jogos, 2),
-        "escanteios_m": round(escanteios / jogos, 1),
-        "finalizacoes_m": round(finalizacoes / jogos, 1),
-        "cartoes_m": round(cartoes / jogos, 1),
+        "avg_goals": avg_goals,
+        "avg_corners": avg_corners,
+        "avg_shots": avg_shots,
+        "avg_cards": avg_cards,
+        "over_1_5_goals": avg_goals > 1.5,
+        "over_2_5_corners": avg_corners > 2.5,
+        "over_1_5_shots": avg_shots > 1.5,
+        "high_card_risk": avg_cards > 1
     }
 
-# =====================================================
-# LÓGICA INTELIGENTE DE ANÁLISE E GERAÇÃO DE BILHETE
-# =====================================================
-def gerar_bilhete_profissional():
-    """Gera bilhete inteligente baseado em estatísticas reais"""
-    bilhete = "🎯 *Gerenciador FX - Bilhete Profissional*\n\n"
+# Função para gerar bilhete completo
+def generate_bet_ticket(matches):
+    message = "🎯 Gerenciador FX - Bilhete Profissional\n\n"
+    for match in matches:
+        home_analysis = analyze_team(match["home_id"])
+        away_analysis = analyze_team(match["away_id"])
 
-    jogos = [
-        {"time_a": "Arsenal FC", "id_a": 57, "time_b": "Olympiakos SFP", "id_b": 1858},
-        {"time_a": "Borussia Dortmund", "id_a": 4, "time_b": "Athletic Club", "id_b": 77},
-        {"time_a": "Napoli", "id_a": 113, "time_b": "Sporting CP", "id_b": 498},
-        {"time_a": "Palmeiras", "id_a": 1765, "time_b": "Vasco da Gama", "id_b": 1767},
+        message += f"⚽ {match['home_name']} x {match['away_name']}\n"
+        # Odds básicas
+        message += f"🏆 {match['home_name']} | Odd {match['odds']['home']} | Prob {match['prob']['home']:.1f}%\n"
+        message += f"🏆 {match['away_name']} | Odd {match['odds']['away']} | Prob {match['prob']['away']:.1f}%\n"
+        message += f"🤝 Draw | Odd {match['odds']['draw']} | Prob {match['prob']['draw']:.1f}%\n"
+
+        # Sugestões baseadas em estatísticas
+        if home_analysis.get("over_1_5_goals") or away_analysis.get("over_1_5_goals"):
+            message += "⚽ Over 1.5 gols\n"
+        if home_analysis.get("over_2_5_corners") or away_analysis.get("over_2_5_corners"):
+            message += "📏 Over 2.5 escanteios\n"
+        if home_analysis.get("avg_goals") > away_analysis.get("avg_goals"):
+            message += f"🤝 {match['home_name']} ou empate\n"
+        elif away_analysis.get("avg_goals") > home_analysis.get("avg_goals"):
+            message += f"🤝 {match['away_name']} ou empate\n"
+
+        message += "\n"
+    
+    bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+
+@app.route("/generate_ticket", methods=["GET"])
+def generate_ticket_endpoint():
+    # Exemplo de jogos - substitua com IDs reais da API
+    matches = [
+        {"home_id": 1, "away_id": 2, "home_name": "Arsenal FC", "away_name": "Olympiakos SFP",
+         "odds": {"home": 1.72, "draw": 3.40, "away": 4.50}, "prob": {"home": 58.1, "draw": 29.4, "away": 12.5}},
+        {"home_id": 3, "away_id": 4, "home_name": "Borussia Dortmund", "away_name": "Athletic Club",
+         "odds": {"home": 1.95, "draw": 3.20, "away": 4.00}, "prob": {"home": 51.2, "draw": 25.0, "away": 23.8}}
     ]
-
-    for jogo in jogos:
-        stats_a = get_team_stats(jogo["id_a"])
-        stats_b = get_team_stats(jogo["id_b"])
-
-        if not stats_a or not stats_b:
-            continue
-
-        bilhete += f"⚽ *{jogo['time_a']} x {jogo['time_b']}*\n"
-        bilhete += f"📊 {jogo['time_a']}: {stats_a['vitorias']} vitórias, {stats_a['gols_m']} gols/jogo, {stats_a['escanteios_m']} escanteios, {stats_a['finalizacoes_m']} finalizações, {stats_a['cartoes_m']} cartões\n"
-        bilhete += f"📊 {jogo['time_b']}: {stats_b['vitorias']} vitórias, {stats_b['gols_m']} gols/jogo, {stats_b['escanteios_m']} escanteios, {stats_b['finalizacoes_m']} finalizações, {stats_b['cartoes_m']} cartões\n"
-
-        # ===== LÓGICA DE APOSTAS INTELIGENTES =====
-        sugestoes = []
-        media_gols = (stats_a["gols_m"] + stats_b["gols_m"]) / 2
-        media_escanteios = (stats_a["escanteios_m"] + stats_b["escanteios_m"]) / 2
-
-        if media_gols > 1.6:
-            sugestoes.append("🔹 Mais de 1.5 gols")
-        if media_gols > 2.3:
-            sugestoes.append("🔹 Mais de 2.5 gols")
-        if media_escanteios > 4.5:
-            sugestoes.append("🔹 Mais de 4.5 escanteios")
-        if stats_a["vitorias"] >= 3:
-            sugestoes.append(f"🔹 {jogo['time_a']} ou empate")
-        if abs(stats_a["gols_m"] - stats_b["gols_m"]) < 0.6:
-            sugestoes.append("🔹 Ambas marcam (Sim)")
-        if stats_b["vitorias"] == 0 and stats_a["vitorias"] >= 4:
-            sugestoes.append(f"🔹 Vitória do {jogo['time_a']}")
-
-        bilhete += "💡 *Sugestões de aposta:*\n" + "\n".join(sugestoes) + "\n\n"
-
-    return bilhete.strip()
-
-# =====================================================
-# ROTAS FLASK
-# =====================================================
-@app.route("/")
-def home():
-    return "✅ Bot Gerenciador FX ativo!"
-
-@app.route("/gerar-bilhete")
-def gerar():
-    bilhete = gerar_bilhete_profissional()
-    bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=bilhete, parse_mode="Markdown")
-    return jsonify({"status": "ok", "mensagem": "Bilhete enviado com sucesso!"})
+    generate_bet_ticket(matches)
+    return jsonify({"status": "success", "message": "Bilhete enviado via Telegram!"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
