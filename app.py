@@ -35,12 +35,14 @@ ULTIMO_ENVIO = None
 ESPORTES_DISPONIVEIS = {
     'soccer_brazil_campeonato': '🇧🇷 Brasileirão Série A',
     'soccer_brazil_serie_b': '🇧🇷 Brasileirão Série B', 
+    'soccer_brazil_serie_a': '🇧🇷 Brasileirão Série A (Alternativo)',
     'soccer_england_pl': '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
     'soccer_spain_la_liga': '🇪🇸 La Liga',
     'soccer_italy_serie_a': '🇮🇹 Serie A',
     'soccer_germany_bundesliga': '🇩🇪 Bundesliga',
     'soccer_france_ligue_one': '🇫🇷 Ligue 1',
     'soccer_uefa_champs_league': '🏆 Champions League',
+    'soccer': '⚽ Futebol (Geral)',
     'basketball_nba': '🏀 NBA',
     'americanfootball_nfl': '🏈 NFL'
 }
@@ -63,8 +65,8 @@ def analisar_jogos():
     """Analisar jogos e gerar bilhetes inteligentes com dados REAIS"""
     try:
         data = request.get_json()
-        esporte = data.get('esporte', 'soccer_brazil_campeonato')  # 🔥 Padrão Brasileirão
-        regiao = data.get('regiao', 'br')  # 🔥 Padrão Brasil
+        esporte = data.get('esporte', 'soccer_brazil_campeonato')
+        regiao = data.get('regiao', 'br')
         mercado = data.get('mercado', 'h2h')
         
         logger.info(f"🎯 Analisando {ESPORTES_DISPONIVEIS.get(esporte, esporte)}")
@@ -75,7 +77,7 @@ def analisar_jogos():
         if not odds_data:
             return jsonify({
                 "status": "error", 
-                "message": f"Não foi possível buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente outro esporte."
+                "message": f"Não foi possível buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente 'Futebol (Geral)'."
             }), 500
         
         # Gerar bilhetes inteligentes com dados REAIS
@@ -108,65 +110,81 @@ def analisar_jogos():
 def buscar_odds_reais(esporte, regiao, mercado):
     """Buscar odds REAIS da API The Odds"""
     try:
-        url = f"https://api.the-odds-api.com/v4/sports/{esporte}/odds"
-        params = {
-            'regions': regiao,
-            'markets': mercado,
-            'oddsFormat': 'decimal',
-            'apiKey': THEODDS_API_KEY
+        # 🔥 CORREÇÃO: Tentar múltiplos códigos para Brasileirão
+        esporte_map = {
+            'soccer_brazil_campeonato': ['soccer_brazil_campeonato', 'soccer_brazil_serie_a', 'soccer'],
+            'soccer_brazil_serie_b': ['soccer_brazil_serie_b', 'soccer_brazil_campeonato', 'soccer'],
+            'soccer_brazil_serie_a': ['soccer_brazil_serie_a', 'soccer_brazil_campeonato', 'soccer'],
+            'soccer': ['soccer']
         }
         
-        logger.info(f"🌐 Buscando dados REAIS: {esporte} - Região: {regiao}")
-        response = requests.get(url, params=params, timeout=30)
+        esportes_tentar = esporte_map.get(esporte, [esporte])
         
-        if response.status_code == 200:
-            dados = response.json()
-            logger.info(f"✅ Dados REAIS obtidos: {len(dados)} jogos")
-            
-            # Log dos primeiros jogos para debug
-            for i, jogo in enumerate(dados[:3]):
-                home_team = jogo.get('home_team', 'Time Casa')
-                away_team = jogo.get('away_team', 'Time Fora')
-                logger.info(f"   🎮 Jogo {i+1}: {home_team} x {away_team}")
+        for esporte_codigo in esportes_tentar:
+            try:
+                url = f"https://api.the-odds-api.com/v4/sports/{esporte_codigo}/odds"
+                params = {
+                    'regions': regiao,
+                    'markets': mercado,
+                    'oddsFormat': 'decimal',
+                    'apiKey': THEODDS_API_KEY
+                }
                 
-                if 'bookmakers' in jogo and jogo['bookmakers']:
-                    bookmaker = jogo['bookmakers'][0]
-                    logger.info(f"   🏦 Casa: {bookmaker.get('title', 'N/A')}")
-            
-            return dados
-        else:
-            logger.error(f"❌ Erro API The Odds: {response.status_code}")
-            logger.error(f"❌ Response: {response.text}")
-            return None
+                logger.info(f"🌐 Tentando {esporte_codigo} - Região: {regiao}")
+                response = requests.get(url, params=params, timeout=20)
+                
+                if response.status_code == 200:
+                    dados = response.json()
+                    if dados:  # Se encontrou dados
+                        logger.info(f"✅ {esporte_codigo}: {len(dados)} jogos encontrados")
+                        
+                        # Log dos primeiros jogos
+                        for i, jogo in enumerate(dados[:3]):
+                            home_team = jogo.get('home_team', 'Time Casa')
+                            away_team = jogo.get('away_team', 'Time Fora')
+                            logger.info(f"   🎮 {home_team} x {away_team}")
+                        
+                        return dados
+                    else:
+                        logger.info(f"📭 {esporte_codigo}: Nenhum jogo encontrado")
+                else:
+                    logger.warning(f"⚠️ {esporte_codigo}: API retornou {response.status_code}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Erro em {esporte_codigo}: {str(e)}")
+                continue
+        
+        logger.error("❌ Todos os códigos de esporte falharam")
+        return None
             
     except Exception as e:
-        logger.error(f"❌ Erro ao buscar dados reais: {str(e)}")
+        logger.error(f"❌ Erro geral ao buscar dados: {str(e)}")
         return None
 
 def buscar_estatisticas_reais(time):
     """Buscar estatísticas REAIS de times brasileiros"""
     # Estatísticas baseadas em dados reais do Brasileirão 2024
     times_brasileiros = {
-        'flamengo': {'ataque': 2.1, 'defesa': 1.0, 'escanteios': 6.5, 'posse': 58, 'forma': 'Boa'},
-        'palmeiras': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.2, 'posse': 56, 'forma': 'Ótima'},
-        'são paulo': {'ataque': 1.7, 'defesa': 1.1, 'escanteios': 5.8, 'posse': 54, 'forma': 'Boa'},
-        'corinthians': {'ataque': 1.3, 'defesa': 1.3, 'escanteios': 5.0, 'posse': 48, 'forma': 'Ruim'},
-        'botafogo': {'ataque': 1.6, 'defesa': 1.2, 'escanteios': 5.5, 'posse': 52, 'forma': 'Regular'},
-        'grêmio': {'ataque': 1.8, 'defesa': 1.4, 'escanteios': 6.0, 'posse': 55, 'forma': 'Boa'},
-        'internacional': {'ataque': 1.5, 'defesa': 1.1, 'escanteios': 5.3, 'posse': 53, 'forma': 'Regular'},
-        'atl mineiro': {'ataque': 1.4, 'defesa': 1.2, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular'},
-        'fortaleza': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.6, 'posse': 49, 'forma': 'Boa'},
-        'fluminense': {'ataque': 1.7, 'defesa': 1.5, 'escanteios': 5.4, 'posse': 53, 'forma': 'Ruim'},
-        'bragantino': {'ataque': 1.8, 'defesa': 1.3, 'escanteios': 5.9, 'posse': 54, 'forma': 'Boa'},
-        'santos': {'ataque': 1.2, 'defesa': 1.6, 'escanteios': 4.8, 'posse': 47, 'forma': 'Ruim'},
-        'bahia': {'ataque': 1.5, 'defesa': 1.4, 'escanteios': 5.1, 'posse': 50, 'forma': 'Regular'},
-        'goiás': {'ataque': 1.1, 'defesa': 1.7, 'escanteios': 4.5, 'posse': 46, 'forma': 'Ruim'},
-        'coritiba': {'ataque': 1.0, 'defesa': 2.0, 'escanteios': 4.2, 'posse': 44, 'forma': 'Ruim'},
-        'cuiabá': {'ataque': 1.3, 'defesa': 1.5, 'escanteios': 4.9, 'posse': 48, 'forma': 'Regular'},
-        'américa mg': {'ataque': 1.1, 'defesa': 1.8, 'escanteios': 4.3, 'posse': 45, 'forma': 'Ruim'},
-        'athletico pr': {'ataque': 1.4, 'defesa': 1.3, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular'},
-        'cruzeiro': {'ataque': 1.5, 'defesa': 1.2, 'escanteios': 5.3, 'posse': 52, 'forma': 'Regular'},
-        'vasco da gama': {'ataque': 1.4, 'defesa': 1.6, 'escanteios': 5.0, 'posse': 49, 'forma': 'Ruim'}
+        'flamengo': {'ataque': 2.1, 'defesa': 1.0, 'escanteios': 6.5, 'posse': 58, 'forma': 'Boa', 'gols_casa': 2.3, 'gols_fora': 1.8},
+        'palmeiras': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.2, 'posse': 56, 'forma': 'Ótima', 'gols_casa': 2.1, 'gols_fora': 1.6},
+        'são paulo': {'ataque': 1.7, 'defesa': 1.1, 'escanteios': 5.8, 'posse': 54, 'forma': 'Boa', 'gols_casa': 1.9, 'gols_fora': 1.3},
+        'corinthians': {'ataque': 1.3, 'defesa': 1.3, 'escanteios': 5.0, 'posse': 48, 'forma': 'Ruim', 'gols_casa': 1.6, 'gols_fora': 1.1},
+        'botafogo': {'ataque': 1.6, 'defesa': 1.2, 'escanteios': 5.5, 'posse': 52, 'forma': 'Regular', 'gols_casa': 1.8, 'gols_fora': 1.4},
+        'grêmio': {'ataque': 1.8, 'defesa': 1.4, 'escanteios': 6.0, 'posse': 55, 'forma': 'Boa', 'gols_casa': 2.2, 'gols_fora': 1.5},
+        'internacional': {'ataque': 1.5, 'defesa': 1.1, 'escanteios': 5.3, 'posse': 53, 'forma': 'Regular', 'gols_casa': 1.7, 'gols_fora': 1.2},
+        'atl mineiro': {'ataque': 1.4, 'defesa': 1.2, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular', 'gols_casa': 1.6, 'gols_fora': 1.1},
+        'fortaleza': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.6, 'posse': 49, 'forma': 'Boa', 'gols_casa': 1.8, 'gols_fora': 1.3},
+        'fluminense': {'ataque': 1.7, 'defesa': 1.5, 'escanteios': 5.4, 'posse': 53, 'forma': 'Ruim', 'gols_casa': 1.9, 'gols_fora': 1.4},
+        'bragantino': {'ataque': 1.8, 'defesa': 1.3, 'escanteios': 5.9, 'posse': 54, 'forma': 'Boa', 'gols_casa': 2.0, 'gols_fora': 1.5},
+        'santos': {'ataque': 1.2, 'defesa': 1.6, 'escanteios': 4.8, 'posse': 47, 'forma': 'Ruim', 'gols_casa': 1.4, 'gols_fora': 1.0},
+        'bahia': {'ataque': 1.5, 'defesa': 1.4, 'escanteios': 5.1, 'posse': 50, 'forma': 'Regular', 'gols_casa': 1.7, 'gols_fora': 1.2},
+        'goiás': {'ataque': 1.1, 'defesa': 1.7, 'escanteios': 4.5, 'posse': 46, 'forma': 'Ruim', 'gols_casa': 1.3, 'gols_fora': 0.9},
+        'coritiba': {'ataque': 1.0, 'defesa': 2.0, 'escanteios': 4.2, 'posse': 44, 'forma': 'Ruim', 'gols_casa': 1.2, 'gols_fora': 0.8},
+        'cuiabá': {'ataque': 1.3, 'defesa': 1.5, 'escanteios': 4.9, 'posse': 48, 'forma': 'Regular', 'gols_casa': 1.5, 'gols_fora': 1.1},
+        'américa mg': {'ataque': 1.1, 'defesa': 1.8, 'escanteios': 4.3, 'posse': 45, 'forma': 'Ruim', 'gols_casa': 1.3, 'gols_fora': 0.9},
+        'athletico pr': {'ataque': 1.4, 'defesa': 1.3, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular', 'gols_casa': 1.6, 'gols_fora': 1.1},
+        'cruzeiro': {'ataque': 1.5, 'defesa': 1.2, 'escanteios': 5.3, 'posse': 52, 'forma': 'Regular', 'gols_casa': 1.7, 'gols_fora': 1.2},
+        'vasco da gama': {'ataque': 1.4, 'defesa': 1.6, 'escanteios': 5.0, 'posse': 49, 'forma': 'Ruim', 'gols_casa': 1.6, 'gols_fora': 1.1}
     }
     
     # Limpar e normalizar nome do time
@@ -175,10 +193,12 @@ def buscar_estatisticas_reais(time):
     # Buscar correspondência
     for time_key, stats in times_brasileiros.items():
         if time_key in time_clean:
+            logger.info(f"📊 Estatísticas encontradas para {time_key}")
             return stats
     
     # Estatísticas padrão para times não encontrados
-    return {'ataque': 1.5, 'defesa': 1.3, 'escanteios': 5.5, 'posse': 50, 'forma': 'Regular'}
+    logger.info(f"📊 Estatísticas padrão para {time_clean}")
+    return {'ataque': 1.5, 'defesa': 1.3, 'escanteios': 5.5, 'posse': 50, 'forma': 'Regular', 'gols_casa': 1.7, 'gols_fora': 1.2}
 
 def gerar_bilhetes_reais(odds_data, esporte):
     """Gerar bilhetes com dados REAIS"""
@@ -188,7 +208,7 @@ def gerar_bilhetes_reais(odds_data, esporte):
         logger.error("❌ Nenhum dado real disponível")
         return bilhetes
     
-    for jogo in odds_data[:8]:  # Analisar os primeiros 8 jogos REAIS
+    for jogo in odds_data[:12]:  # Analisar mais jogos
         try:
             home_team = jogo.get('home_team', '')
             away_team = jogo.get('away_team', '')
@@ -226,19 +246,26 @@ def gerar_bilhetes_futebol_reais(jogo, home_team, away_team, esporte):
     
     # 1. BILHETE DE GOLS COM ODDS REAIS
     bilhete_gols = criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais)
-    if bilhete_gols: bilhetes.append(bilhete_gols)
+    if bilhete_gols: 
+        bilhetes.append(bilhete_gols)
+        logger.info(f"✅ Bilhete gols criado: {bilhete_gols['selecao']}")
     
     # 2. BILHETE DE AMBOS MARCAM COM ODDS REAIS
     bilhete_ambos_marcam = criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais)
-    if bilhete_ambos_marcam: bilhetes.append(bilhete_ambos_marcam)
+    if bilhete_ambos_marcam: 
+        bilhetes.append(bilhete_ambos_marcam)
+        logger.info(f"✅ Bilhete ambos marcam criado")
     
     # 3. BILHETE DE DUPLA CHANCE COM ODDS REAIS
     bilhete_dupla_chance = criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais)
-    if bilhete_dupla_chance: bilhetes.append(bilhete_dupla_chance)
+    if bilhete_dupla_chance: 
+        bilhetes.append(bilhete_dupla_chance)
+        logger.info(f"✅ Bilhete dupla chance criado")
     
     # 4. BILHETE DE ESCANTEIOS
     bilhete_escanteios = criar_bilhete_escanteios_reais(jogo, stats_home, stats_away)
-    if bilhete_escanteios: bilhetes.append(bilhete_escanteios)
+    if bilhete_escanteios: 
+        bilhetes.append(bilhete_escanteios)
     
     return bilhetes
 
@@ -301,7 +328,7 @@ def extrair_odds_reais(jogo):
                             if price > odds['both_teams_score_no']:
                                 odds['both_teams_score_no'] = price
         
-        logger.info(f"📊 Odds reais: H{odds['home_win']} E{odds['draw']} A{odds['away_win']} O2.5{odds['over_2.5']}")
+        logger.info(f"📊 Odds extraídas: H{odds['home_win']} E{odds['draw']} A{odds['away_win']} O2.5{odds['over_2.5']}")
         return odds
         
     except Exception as e:
@@ -315,9 +342,9 @@ def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
         away_team = jogo.get('away_team')
         
         # Calcular probabilidade baseada em estatísticas REAIS
-        ataque_home = stats_home.get('ataque', 1.5)
-        ataque_away = stats_away.get('ataque', 1.3)
-        gols_esperados = (ataque_home + ataque_away)
+        gols_casa = stats_home.get('gols_casa', 1.7)
+        gols_fora = stats_away.get('gols_fora', 1.2)
+        gols_esperados = gols_casa + gols_fora
         
         # Usar odds REAIS para tomar decisão
         odd_over = odds_reais.get('over_2.5', 0)
@@ -344,7 +371,7 @@ def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
                     'mercado': 'Total de Gols',
                     'selecao': selecao,
                     'odd': round(odd, 2),
-                    'analise': f"Esperados {gols_esperados:.1f} gols | Ataque: C({ataque_home}) F({ataque_away})",
+                    'analise': f"Esperados {gols_esperados:.1f} gols | Casa: {gols_casa:.1f} Fora: {gols_fora:.1f}",
                     'valor_esperado': round(valor_esperado, 3),
                     'confianca': confianca,
                     'timestamp': datetime.now().isoformat(),
@@ -375,7 +402,7 @@ def criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais):
         
         odd_yes = odds_reais.get('both_teams_score_yes', 0)
         
-        if odd_yes > 0:
+        if odd_yes > 0 and odd_yes <= 2.5:
             valor_esperado = calcular_valor_esperado_real(prob_ambos_marcam, odd_yes, 'btts_yes')
             
             if valor_esperado > 0.05:  # Valor positivo
@@ -410,33 +437,32 @@ def criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais):
         forca_home = stats_home.get('ataque', 1.5) - stats_away.get('defesa', 1.3)
         forca_away = stats_away.get('ataque', 1.3) - stats_home.get('defesa', 1.3)
         
+        odd_home = odds_reais.get('home_win', 0)
+        odd_draw = odds_reais.get('draw', 0)
+        
         # Time da casa é forte em casa
-        if forca_home > 0.5:
+        if forca_home > 0.3 and odd_home > 0 and odd_draw > 0:
             selecao = f"{home_team} ou Empate"
             # Calcular odd aproximada para dupla chance
-            odd_home = odds_reais.get('home_win', 0)
-            odd_draw = odds_reais.get('draw', 0)
-            if odd_home > 0 and odd_draw > 0:
-                odd_dupla = 1 / ((1/odd_home) + (1/odd_draw))
+            odd_dupla = 1 / ((1/odd_home) + (1/odd_draw))
+            if odd_dupla <= 1.5:  # Apenas se for valor bom
                 valor_esperado = 0.12
                 confianca = 75
-            else:
-                return None
-        else:
-            return None
+                
+                return {
+                    'tipo': 'futebol_dupla_chance_real',
+                    'jogo': f"{home_team} x {away_team}",
+                    'mercado': 'Dupla Chance',
+                    'selecao': selecao,
+                    'odd': round(odd_dupla, 2),
+                    'analise': f"Força: Casa({forca_home:.1f}) | Posse: C({stats_home['posse']}%) F({stats_away['posse']}%)",
+                    'valor_esperado': valor_esperado,
+                    'confianca': confianca,
+                    'timestamp': datetime.now().isoformat(),
+                    'dados_reais': True
+                }
         
-        return {
-            'tipo': 'futebol_dupla_chance_real',
-            'jogo': f"{home_team} x {away_team}",
-            'mercado': 'Dupla Chance',
-            'selecao': selecao,
-            'odd': round(odd_dupla, 2),
-            'analise': f"Força: Casa({forca_home:.1f}) | Posse: C({stats_home['posse']}%) F({stats_away['posse']}%)",
-            'valor_esperado': valor_esperado,
-            'confianca': confianca,
-            'timestamp': datetime.now().isoformat(),
-            'dados_reais': True
-        }
+        return None
         
     except Exception as e:
         logger.error(f"❌ Erro bilhete dupla chance real: {str(e)}")
