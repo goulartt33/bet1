@@ -3,68 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bet Oportunidades</title>
+    <title>Bilhetes de Apostas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #111;
-            color: #fff;
+            background-color: #1a1a1a;
+            color: #ffffff;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            padding: 20px;
+            padding: 50px;
         }
         h1 {
-            color: #ff0055;
+            color: #ff4081;
         }
         button {
-            background-color: #ff0055;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #ff4081;
             color: #fff;
             border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            cursor: pointer;
             border-radius: 5px;
+            cursor: pointer;
             margin-bottom: 20px;
         }
         button:hover {
-            background-color: #ff3388;
+            background-color: #e73370;
         }
-        #resultado {
+        #bilhetes {
             width: 100%;
-            max-width: 700px;
-            background-color: #222;
+            max-width: 600px;
+            background-color: #2a2a2a;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 10px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        .bilhete {
+            background-color: #3a3a3a;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
             white-space: pre-wrap;
-            font-family: monospace;
+        }
+        #status {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>🎯 Buscar Oportunidades</h1>
-    <button id="buscarBtn">Buscar Bilhetes</button>
-    <div id="resultado">Nenhum bilhete gerado. Tente novamente.</div>
+    <h1>Bilhetes de Apostas</h1>
+    <div id="status">Clique no botão para buscar oportunidades.</div>
+    <button id="buscarBtn">Buscar Oportunidades</button>
+    <div id="bilhetes"></div>
 
     <script>
-        const btn = document.getElementById("buscarBtn");
-        const resultado = document.getElementById("resultado");
+        const buscarBtn = document.getElementById("buscarBtn");
+        const bilhetesDiv = document.getElementById("bilhetes");
+        const statusDiv = document.getElementById("status");
 
-        btn.addEventListener("click", async () => {
-            resultado.textContent = "Buscando oportunidades...";
+        buscarBtn.addEventListener("click", async () => {
+            statusDiv.textContent = "Buscando jogos e enviando bilhetes...";
+            bilhetesDiv.innerHTML = "";
+
             try {
-                const res = await fetch("/buscar", { method: "POST" });
-                const data = await res.json();
+                const response = await fetch("/buscar", {
+                    method: "POST"
+                });
+                const data = await response.json();
 
-                if(data.status === "sucesso"){
-                    resultado.textContent = "✅ Enviado com sucesso para o Telegram!";
+                if (data.status === "sucesso") {
+                    if (data.bilhetes.length === 0) {
+                        statusDiv.textContent = "Nenhum bilhete gerado.";
+                    } else {
+                        statusDiv.textContent = `Foram enviados ${data.bilhetes.length} bilhetes para o Telegram.`;
+                        data.bilhetes.forEach(bilhete => {
+                            const div = document.createElement("div");
+                            div.className = "bilhete";
+                            div.textContent = bilhete;
+                            bilhetesDiv.appendChild(div);
+                        });
+                    }
                 } else {
-                    resultado.textContent = `❌ ${data.msg}`;
+                    statusDiv.textContent = "Erro: " + data.mensagem;
                 }
             } catch (error) {
-                resultado.textContent = `❌ Erro na requisição: ${error}`;
+                statusDiv.textContent = "Erro ao conectar com o servidor: " + error.message;
             }
         });
     </script>
