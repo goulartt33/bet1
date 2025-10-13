@@ -1,55 +1,57 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FootBet Pro - Apostas de Futebol</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-    body { box-sizing: border-box; background: linear-gradient(135deg,#059669 0%,#10b981 50%,#22c55e 100%); }
-    .gradient-card { background: linear-gradient(135deg,#ecfdf5 0%,#eff6ff 100%); }
-    .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-    .card-hover:hover { transform: translateY(-8px); box-shadow: 0 25px 50px rgba(6,78,59,0.15); }
-    .pulse-animation { animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(34,197,94,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
-    .floating { animation: floating 4s ease-in-out infinite; }
-    @keyframes floating { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
-    .field-pattern { background-image: linear-gradient(90deg, rgba(34,197,94,0.1) 50%, transparent 50%), linear-gradient(rgba(34,197,94,0.1) 50%, transparent 50%); background-size: 20px 20px; }
-    .glass-effect { backdrop-filter: blur(10px); background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bet Analyzer ⚽</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-<header class="text-white shadow-2xl py-5">
-    <div class="container mx-auto flex justify-between items-center px-6">
-        <h1 class="text-3xl font-bold">FootBet Pro ⚽</h1>
-        <button class="pulse-animation bg-green-600 px-6 py-2 rounded-lg text-white font-bold hover:bg-green-500" onclick="buscarOportunidades()">Buscar Oportunidades</button>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+    <h1 class="text-3xl font-bold mb-6 text-green-400">🔍 Buscar Oportunidades</h1>
+    <button id="buscar" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg font-semibold transition-all">
+        Buscar Oportunidades
+    </button>
+
+    <div id="resultado" class="mt-8 w-full max-w-3xl bg-gray-800 rounded-xl p-6 shadow-lg hidden">
+        <h2 class="text-xl font-bold mb-4">📋 Bilhetes Gerados</h2>
+        <div id="bilhetes"></div>
     </div>
-</header>
 
-<section class="container mx-auto px-6 py-24 text-center text-white">
-    <h2 class="text-5xl font-bold mb-4">O Melhor do Futebol Mundial</h2>
-    <p class="mb-6 text-lg">Aposte com dados reais e odds premium direto no Telegram</p>
-    <div id="status" class="text-xl font-semibold"></div>
-</section>
+    <script>
+        document.getElementById('buscar').addEventListener('click', async () => {
+            const botao = document.getElementById('buscar');
+            const resultado = document.getElementById('resultado');
+            const bilhetesDiv = document.getElementById('bilhetes');
 
-<script>
-async function buscarOportunidades() {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = "⚡ Buscando oportunidades...";
-    try {
-        const res = await fetch('/buscar', { method: 'POST' });
-        const data = await res.json();
-        if (data.status === "sucesso") {
-            statusEl.textContent = `✅ ${data.mensagem}`;
-        } else if (data.status === "vazio") {
-            statusEl.textContent = `⚠️ ${data.mensagem}`;
-        } else {
-            statusEl.textContent = `❌ Erro: ${data.mensagem}`;
-        }
-    } catch(err) {
-        statusEl.textContent = `❌ Erro de conexão: ${err}`;
-    }
-}
-</script>
+            botao.disabled = true;
+            botao.innerText = "⏳ Buscando...";
+            resultado.classList.add('hidden');
+            bilhetesDiv.innerHTML = "";
+
+            try {
+                const response = await fetch('/buscar', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.erro) {
+                    bilhetesDiv.innerHTML = `<p class='text-red-400'>❌ Erro: ${data.erro}</p>`;
+                } else {
+                    data.dados.forEach(msg => {
+                        const card = document.createElement('div');
+                        card.className = "bg-gray-700 p-4 mb-3 rounded-lg";
+                        card.innerHTML = `<pre class='whitespace-pre-wrap'>${msg}</pre>`;
+                        bilhetesDiv.appendChild(card);
+                    });
+                }
+
+                resultado.classList.remove('hidden');
+            } catch (e) {
+                bilhetesDiv.innerHTML = `<p class='text-red-400'>❌ Erro: ${e.message}</p>`;
+                resultado.classList.remove('hidden');
+            } finally {
+                botao.disabled = false;
+                botao.innerText = "Buscar Oportunidades";
+            }
+        });
+    </script>
 </body>
 </html>
