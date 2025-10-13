@@ -1,66 +1,79 @@
 # app.py
-from flask import Flask, render_template, request, jsonify
 import os
 import requests
+from flask import Flask, jsonify, render_template, request
 from telegram import Bot
-from telegram.error import TelegramError
+from datetime import datetime
+from dotenv import load_dotenv
 
-app = Flask(__name__)
+# Carregar variáveis do .env
+load_dotenv()
 
-# Carregar variáveis de ambiente
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Endpoint da sua API real (substitua pelo endpoint correto)
-API_URL = "https://api-da-superbet-ou-outra-free.com/jogos"
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/buscar", methods=["POST"])
+# Função para buscar jogos do dia usando Football-data.org
 def buscar_jogos():
+    url = "https://api.football-data.org/v4/matches"
+    headers = {"X-Auth-Token": FOOTBALL_API_KEY}
+    params = {"dateFrom": datetime.now().strftime("%Y-%m-%d"),
+              "dateTo": datetime.now().strftime("%Y-%m-%d")}
+    response = requests.get(url, headers=headers, params=params)
+    data = response.json()
+    jogos = []
+
+    for match in data.get("matches", []):
+        time_casa = match["homeTeam"]["name"]
+        time_fora = match["awayTeam"]["name"]
+        horario = match["utcDate"].replace("T", " ").replace("Z", "")
+        ligas = match["competition"]["name"]
+
+        # Simulação básica de odds e sugestões (com base em tendências)
+        bilhete = {
+            "jogo": f"{time_casa} vs {time_fora}",
+            "horario": horario,
+            "liga": ligas,
+            "sugestoes": [
+                f"🏆 Vitória ou empate do favorito ({time_casa})",
+                f"⚽ Over 1.5 gols",
+                f"🚩 Escanteios +8.5 do {time_casa}",
+                f"🎯 Finalizações do {time_casa} 1T +4.5 | 2T +3.5"
+            ]
+        }
+        jogos.append(bilhete)
+    return jogos
+
+# Rota principal (frontend)
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Rota para buscar oportunidades
+@app.route('/buscar', methods=['POST'])
+def buscar():
     try:
-        # Requisição para sua API
-        response = requests.get(f"{API_URL}?token={FOOTBALL_API_KEY}")
-        response.raise_for_status()
-        jogos = response.json()  # Assumindo que sua API retorna JSON
+        jogos = buscar_jogos()
+        if not jogos:
+            return jsonify({"erro": "Nenhum jogo encontrado hoje."}), 404
 
-        bilhetes = []
+        mensagens = []
         for jogo in jogos:
-            # Montando o bilhete com base nos dados da API
-            time_casa = jogo.get("time_casa")
-            time_fora = jogo.get("time_fora")
-            odds = jogo.get("odds")  # exemplo: {'over_1_5': 1.8, 'both_teams_score': 1.9}
-            
-            bilhete = f"🏟 {time_casa} vs {time_fora}\n"
-            if odds:
-                if "over_1_5" in odds:
-                    bilhete += f"🔢 Mais de 1.5 gols @ {odds['over_1_5']}\n"
-                if "both_teams_score" in odds:
-                    bilhete += f"⚽ Ambas marcam @ {odds['both_teams_score']}\n"
-                if "escanteios_over_4_5" in odds:
-                    bilhete += f"🎯 Mais de 4.5 escanteios @ {odds['escanteios_over_4_5']}\n"
+            msg = (
+                f"⚽ {jogo['jogo']} ({jogo['horario']})\n"
+                f"🏆 Liga: {jogo['liga']}\n\n"
+                f"💡 Sugestões:\n"
+                + "\n".join(jogo['sugestoes'])
+            )
+            mensagens.append(msg)
+            bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=msg)
 
-            bilhetes.append(bilhete)
+        return jsonify({"mensagem": "Bilhetes enviados com sucesso!", "dados": mensagens})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
-        # Enviar cada bilhete para o Telegram
-        for bilhete in bilhetes:
-            try:
-                bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=bilhete)
-            except TelegramError as e:
-                print(f"Erro ao enviar bilhete: {e}")
-
-        return jsonify({"status": "sucesso", "bilhetes": bilhetes})
-    
-    except requests.RequestException as e:
-        print(f"Erro ao buscar jogos: {e}")
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
-
-if __name__ == "__main__":
-    # Configuração para Render
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
