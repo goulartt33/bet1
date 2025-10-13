@@ -1,57 +1,67 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bet Analyzer ⚽</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>📊 Bot de Apostas - Bilhetes</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(90deg,#0f172a,#071028); color:#fff; min-height:100vh; padding:24px; display:flex; flex-direction:column; align-items:center; }
+    h1 { margin-bottom:16px; }
+    button { background:#06b6d4; color:#001; border:none; padding:12px 20px; border-radius:10px; font-weight:700; cursor:pointer; margin-bottom:16px; }
+    button:disabled { opacity:0.6; cursor:default; }
+    #status{ margin-bottom:12px; color:#9ca3af }
+    #bilhetes { width:100%; max-width:900px; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }
+    .card { background:rgba(255,255,255,0.05); padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.4); white-space:pre-wrap; }
+    .error { color:#ff7b7b; }
+  </style>
 </head>
-<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
-    <h1 class="text-3xl font-bold mb-6 text-green-400">🔍 Buscar Oportunidades</h1>
-    <button id="buscar" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg font-semibold transition-all">
-        Buscar Oportunidades
-    </button>
+<body>
+  <h1>📊 Bot de Apostas - Bilhetes Inteligentes</h1>
+  <div id="status">Clique em Buscar Oportunidades para gerar bilhetes com dados reais.</div>
+  <button id="buscarBtn">🎯 Buscar Oportunidades</button>
+  <div id="bilhetes"></div>
 
-    <div id="resultado" class="mt-8 w-full max-w-3xl bg-gray-800 rounded-xl p-6 shadow-lg hidden">
-        <h2 class="text-xl font-bold mb-4">📋 Bilhetes Gerados</h2>
-        <div id="bilhetes"></div>
-    </div>
+  <script>
+    const btn = document.getElementById('buscarBtn');
+    const status = document.getElementById('status');
+    const bilhetesDiv = document.getElementById('bilhetes');
 
-    <script>
-        document.getElementById('buscar').addEventListener('click', async () => {
-            const botao = document.getElementById('buscar');
-            const resultado = document.getElementById('resultado');
-            const bilhetesDiv = document.getElementById('bilhetes');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.innerText = "⏳ Buscando...";
+      status.innerText = "Buscando jogos e odds... (verifique os logs do servidor se demorar)";
+      bilhetesDiv.innerHTML = "";
 
-            botao.disabled = true;
-            botao.innerText = "⏳ Buscando...";
-            resultado.classList.add('hidden');
-            bilhetesDiv.innerHTML = "";
+      try {
+        const res = await fetch('/buscar', { method: 'POST' });
+        const data = await res.json();
 
-            try {
-                const response = await fetch('/buscar', { method: 'POST' });
-                const data = await response.json();
+        if (res.status !== 200) {
+          status.innerHTML = `<span class="error">❌ Erro: ${data.erro || 'erro desconhecido'}</span>`;
+          btn.disabled = false;
+          btn.innerText = "🎯 Buscar Oportunidades";
+          return;
+        }
 
-                if (data.erro) {
-                    bilhetesDiv.innerHTML = `<p class='text-red-400'>❌ Erro: ${data.erro}</p>`;
-                } else {
-                    data.dados.forEach(msg => {
-                        const card = document.createElement('div');
-                        card.className = "bg-gray-700 p-4 mb-3 rounded-lg";
-                        card.innerHTML = `<pre class='whitespace-pre-wrap'>${msg}</pre>`;
-                        bilhetesDiv.appendChild(card);
-                    });
-                }
-
-                resultado.classList.remove('hidden');
-            } catch (e) {
-                bilhetesDiv.innerHTML = `<p class='text-red-400'>❌ Erro: ${e.message}</p>`;
-                resultado.classList.remove('hidden');
-            } finally {
-                botao.disabled = false;
-                botao.innerText = "Buscar Oportunidades";
-            }
-        });
-    </script>
+        const jogos = data.dados || [];
+        if (jogos.length === 0) {
+          status.innerText = "Nenhum bilhete gerado hoje.";
+        } else {
+          status.innerText = `✅ Enviados ${jogos.length} bilhetes para o Telegram.`;
+          jogos.forEach((t) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.textContent = t;
+            bilhetesDiv.appendChild(card);
+          });
+        }
+      } catch (err) {
+        status.innerHTML = `<span class="error">❌ Erro de conexão: ${err.message}</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "🎯 Buscar Oportunidades";
+      }
+    });
+  </script>
 </body>
 </html>
