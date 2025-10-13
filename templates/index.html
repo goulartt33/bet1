@@ -1,67 +1,265 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>📊 Bot de Apostas - Bilhetes</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(90deg,#0f172a,#071028); color:#fff; min-height:100vh; padding:24px; display:flex; flex-direction:column; align-items:center; }
-    h1 { margin-bottom:16px; }
-    button { background:#06b6d4; color:#001; border:none; padding:12px 20px; border-radius:10px; font-weight:700; cursor:pointer; margin-bottom:16px; }
-    button:disabled { opacity:0.6; cursor:default; }
-    #status{ margin-bottom:12px; color:#9ca3af }
-    #bilhetes { width:100%; max-width:900px; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }
-    .card { background:rgba(255,255,255,0.05); padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.4); white-space:pre-wrap; }
-    .error { color:#ff7b7b; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Busca - Telegram Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .search-form {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            text-align: left;
+        }
+
+        .success {
+            border-left: 4px solid #28a745;
+        }
+
+        .error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .status-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+        }
+
+        .footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
-  <h1>📊 Bot de Apostas - Bilhetes Inteligentes</h1>
-  <div id="status">Clique em Buscar Oportunidades para gerar bilhetes com dados reais.</div>
-  <button id="buscarBtn">🎯 Buscar Oportunidades</button>
-  <div id="bilhetes"></div>
+    <div class="container">
+        <div class="logo">🤖</div>
+        <h1>Sistema de Busca</h1>
+        <p class="subtitle">Envie buscas diretamente para o Telegram</p>
+        
+        <form class="search-form" id="searchForm">
+            <div class="input-group">
+                <input type="text" id="searchTerm" placeholder="Digite o termo de busca..." required>
+            </div>
+            <button type="submit" id="searchButton">
+                🔍 Buscar e Enviar
+            </button>
+        </form>
 
-  <script>
-    const btn = document.getElementById('buscarBtn');
-    const status = document.getElementById('status');
-    const bilhetesDiv = document.getElementById('bilhetes');
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Processando sua busca...</p>
+        </div>
 
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      btn.innerText = "⏳ Buscando...";
-      status.innerText = "Buscando jogos e odds... (verifique os logs do servidor se demorar)";
-      bilhetesDiv.innerHTML = "";
+        <div class="result" id="result"></div>
 
-      try {
-        const res = await fetch('/buscar', { method: 'POST' });
-        const data = await res.json();
+        <div class="status-info" id="statusInfo">
+            <strong>Status do Sistema:</strong><br>
+            <span id="systemStatus">Verificando...</span>
+        </div>
 
-        if (res.status !== 200) {
-          status.innerHTML = `<span class="error">❌ Erro: ${data.erro || 'erro desconhecido'}</span>`;
-          btn.disabled = false;
-          btn.innerText = "🎯 Buscar Oportunidades";
-          return;
+        <div class="footer">
+            &copy; 2025 Sistema Flask + Telegram Bot
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const searchTerm = document.getElementById('searchTerm').value;
+            const searchButton = document.getElementById('searchButton');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            // Mostrar loading
+            searchButton.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/buscar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        termo: searchTerm
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Mostrar resultado
+                result.style.display = 'block';
+                if (data.status === 'success') {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <strong>✅ Sucesso!</strong>
+                        <p>Busca realizada com sucesso e enviada para o Telegram.</p>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                            <strong>Termo:</strong> ${data.data.termo}<br>
+                            <strong>Resultado:</strong> ${data.data.resultado}<br>
+                            <strong>Horário:</strong> ${new Date(data.data.timestamp).toLocaleString()}
+                        </div>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <strong>❌ Erro!</strong>
+                        <p>${data.message || 'Erro ao processar a busca'}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = `
+                    <strong>❌ Erro de Conexão!</strong>
+                    <p>Não foi possível conectar ao servidor.</p>
+                `;
+            } finally {
+                searchButton.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        // Verificar status do sistema ao carregar a página
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/info');
+                const data = await response.json();
+                
+                const statusElement = document.getElementById('systemStatus');
+                if (data.telegram_configured) {
+                    statusElement.innerHTML = '✅ Sistema operacional - Telegram configurado';
+                } else {
+                    statusElement.innerHTML = '⚠️ Sistema operacional - Telegram não configurado';
+                }
+            } catch (error) {
+                document.getElementById('systemStatus').innerHTML = '❌ Erro ao verificar status do sistema';
+            }
         }
 
-        const jogos = data.dados || [];
-        if (jogos.length === 0) {
-          status.innerText = "Nenhum bilhete gerado hoje.";
-        } else {
-          status.innerText = `✅ Enviados ${jogos.length} bilhetes para o Telegram.`;
-          jogos.forEach((t) => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.textContent = t;
-            bilhetesDiv.appendChild(card);
-          });
-        }
-      } catch (err) {
-        status.innerHTML = `<span class="error">❌ Erro de conexão: ${err.message}</span>`;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "🎯 Buscar Oportunidades";
-      }
-    });
-  </script>
+        // Chamar ao carregar a página
+        checkSystemStatus();
+    </script>
 </body>
 </html>
