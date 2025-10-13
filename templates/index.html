@@ -359,4 +359,247 @@
 </head>
 <body>
     <div class="container">
-        <div class
+        <div class="header">
+            <div class="logo">🎯🤖</div>
+            <h1>BetMaster AI</h1>
+            <p class="subtitle">Sistema Inteligente de Análise e Criação de Bilhetes</p>
+            <p class="tagline">Algoritmos avançados identificando as melhores oportunidades</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalBilhetes">0</div>
+                <div class="stat-label">Bilhetes Gerados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="altaConfianca">0</div>
+                <div class="stat-label">Alta Confiança</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="valorMedio">0.0</div>
+                <div class="stat-label">Valor Médio</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="taxaSucesso">0%</div>
+                <div class="stat-label">Taxa Esperada</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card controls">
+                <h3>⚙️ Configurações de Análise</h3>
+                <div class="form-group">
+                    <label for="esporte">Esporte:</label>
+                    <select id="esporte">
+                        <option value="soccer">⚽ Futebol</option>
+                        <option value="basketball_nba">🏀 NBA</option>
+                        <option value="americanfootball_nfl">🏈 NFL</option>
+                        <option value="baseball_mlb">⚾ MLB</option>
+                        <option value="icehockey_nhl">🏒 NHL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regiao">Região:</label>
+                    <select id="regiao">
+                        <option value="eu">🇪🇺 Europa</option>
+                        <option value="us">🇺🇸 Estados Unidos</option>
+                        <option value="uk">🇬🇧 Reino Unido</option>
+                        <option value="au">🇦🇺 Austrália</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mercado">Mercado Principal:</label>
+                    <select id="mercado">
+                        <option value="h2h">🎯 Head-to-Head</option>
+                        <option value="totals">📊 Totais (Over/Under)</option>
+                        <option value="spreads">⚖️ Handicap</option>
+                    </select>
+                </div>
+                <button onclick="analisarJogos()" id="analisarBtn">
+                    🤖 Analisar & Gerar Bilhetes
+                </button>
+                <button onclick="testarBilhetes()" id="testeBtn" class="btn-test">
+                    🧪 Testar no Telegram
+                </button>
+            </div>
+
+            <div class="card results">
+                <h3>📈 Bilhetes Inteligentes Gerados</h3>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analisando dados e gerando bilhetes inteligentes...</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                        Consultando APIs • Processando estatísticas • Calculando valores
+                    </p>
+                </div>
+                <div id="resultadosContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analisarJogos() {
+            const analisarBtn = document.getElementById('analisarBtn');
+            const loading = document.getElementById('loading');
+            const resultadosContainer = document.getElementById('resultadosContainer');
+            
+            const esporte = document.getElementById('esporte').value;
+            const regiao = document.getElementById('regiao').value;
+            const mercado = document.getElementById('mercado').value;
+            
+            analisarBtn.disabled = true;
+            analisarBtn.innerHTML = '⏳ Analisando...';
+            loading.style.display = 'block';
+            resultadosContainer.innerHTML = '';
+            
+            try {
+                const response = await fetch('/analisar_jogos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        esporte: esporte,
+                        regiao: regiao,
+                        mercado: mercado
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    exibirBilhetes(data.data.bilhetes);
+                    atualizarEstatisticas(data.data.bilhetes);
+                } else {
+                    resultadosContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>❌ Erro na Análise</h3>
+                            <p>${data.message || 'Erro ao processar dados'}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultadosContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Erro de Conexão</h3>
+                        <p>Verifique sua conexão e tente novamente.</p>
+                    </div>
+                `;
+            } finally {
+                analisarBtn.disabled = false;
+                analisarBtn.innerHTML = '🤖 Analisar & Gerar Bilhetes';
+                loading.style.display = 'none';
+            }
+        }
+
+        function exibirBilhetes(bilhetes) {
+            const container = document.getElementById('resultadosContainer');
+            
+            if (!bilhetes || bilhetes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🔍 Nenhum bilhete encontrado</h3>
+                        <p>Tente alterar os filtros ou esporte.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = bilhetes.map((bilhete, index) => {
+                const confiancaClass = bilhete.confianca >= 80 ? 'confianca-alta' : 
+                                     bilhete.confianca >= 70 ? 'confianca-media' : 'confianca-baixa';
+                
+                const isHot = bilhete.confianca >= 85 && bilhete.valor_esperado > 0.7;
+                
+                return `
+                    <div class="bilhete-item ${isHot ? 'alerta-bilhete' : ''}">
+                        <div class="bilhete-header">
+                            <div class="jogo-info">${bilhete.jogo}</div>
+                            <div class="bilhete-tipo">${bilhete.tipo}</div>
+                        </div>
+                        
+                        <div class="bilhete-detalhes">
+                            <div class="detalhes-esquerda">
+                                <div class="mercado">${bilhete.mercado}</div>
+                                <div class="selecao">${bilhete.selecao}</div>
+                                <div class="analise">${bilhete.analise}</div>
+                            </div>
+                            <div class="detalhes-direita">
+                                <div class="odd">${bilhete.odd}</div>
+                                <div class="valor-esperado">Valor: ${bilhete.valor_esperado}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bilhete-footer">
+                            <div class="confianca">
+                                <span>Confiança: ${bilhete.confianca}%</span>
+                                <div class="barra-confianca">
+                                    <div class="preenchimento-confianca ${confiancaClass}" 
+                                         style="width: ${bilhete.confianca}%"></div>
+                                </div>
+                            </div>
+                            <div class="timestamp">
+                                ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function atualizarEstatisticas(bilhetes) {
+            document.getElementById('totalBilhetes').textContent = bilhetes.length;
+            
+            const altaConfianca = bilhetes.filter(b => b.confianca >= 80).length;
+            document.getElementById('altaConfianca').textContent = altaConfianca;
+            
+            const valorMedio = bilhetes.reduce((sum, b) => sum + b.valor_esperado, 0) / bilhetes.length;
+            document.getElementById('valorMedio').textContent = valorMedio.toFixed(2);
+            
+            const taxaSucesso = (bilhetes.filter(b => b.confianca >= 75).length / bilhetes.length * 100).toFixed(0);
+            document.getElementById('taxaSucesso').textContent = taxaSucesso + '%';
+        }
+
+        async function testarBilhetes() {
+            const testeBtn = document.getElementById('testeBtn');
+            
+            testeBtn.disabled = true;
+            testeBtn.innerHTML = '⏳ Enviando...';
+            
+            try {
+                const response = await fetch('/teste_bilhetes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('✅ Bilhetes de teste enviados para o Telegram!');
+                } else {
+                    alert('❌ Erro ao enviar: ' + data.message);
+                }
+                
+            } catch (error) {
+                alert('❌ Erro de conexão ao testar');
+            } finally {
+                testeBtn.disabled = false;
+                testeBtn.innerHTML = '🧪 Testar no Telegram';
+            }
+        }
+
+        // Análise automática ao carregar a página
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                analisarJogos();
+            }, 1000);
+        });
+
+        // Atualizar a cada 2 minutos
+        setInterval(analisarJogos, 120000);
+    </script>
+</body>
+</html>
