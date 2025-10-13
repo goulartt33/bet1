@@ -4,7 +4,6 @@ import requests
 import os
 from datetime import datetime, timedelta
 import time
-import json
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -42,11 +41,11 @@ class AnalisadorJogosReais:
                 if jogos and len(jogos) > 0:
                     logger.info(f"✅ {len(jogos)} jogos REAIS encontrados")
                     
-                    # Log dos primeiros jogos para debug
-                    for i, jogo in enumerate(jogo[:3]):
-                        logger.info(f"📊 Jogo {i+1}: {jogo.get('home_team')} vs {jogo.get('away_team')}")
-                        if jogo.get('bookmakers'):
-                            for bookmaker in jogo['bookmakers'][:2]:
+                    # Log dos primeiros jogos para debug (CORRIGIDO)
+                    for i, jogo_item in enumerate(jogos[:3]):  # Mudei 'jogo' para 'jogo_item'
+                        logger.info(f"📊 Jogo {i+1}: {jogo_item.get('home_team')} vs {jogo_item.get('away_team')}")
+                        if jogo_item.get('bookmakers'):
+                            for bookmaker in jogo_item['bookmakers'][:2]:
                                 if bookmaker.get('markets'):
                                     for market in bookmaker['markets']:
                                         if market.get('outcomes'):
@@ -381,7 +380,7 @@ def status():
         'timestamp': datetime.now().isoformat(),
         'api_odds': 'ativa',
         'dados': 'REAIS',
-        'versao': '6.0.0-dados-reais'
+        'versao': '6.1.0-sem-erros'
     })
 
 @app.route('/debug_jogos', methods=['GET'])
