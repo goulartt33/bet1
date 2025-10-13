@@ -1,66 +1,80 @@
 # app.py
-import os
 from flask import Flask, render_template, request, jsonify
+import os
 import requests
 from telegram import Bot
 
-# Configurações Flask
-app = Flask(__name__, template_folder='frontend')
+app = Flask(__name__)
 
-# Carregar variáveis de ambiente
+# Variáveis de ambiente
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
+API_TOKEN = os.getenv("API_TOKEN")  # Sua API real
 
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Função para buscar oportunidades reais (exemplo: últimas partidas e estatísticas)
-def buscar_oportunidades():
-    url = "https://api.football-data.org/v4/matches?status=SCHEDULED"  # Exemplo de endpoint
-    headers = {"X-Auth-Token": FOOTBALL_API_KEY}
-    
+# Função para buscar jogos do dia e estatísticas
+def buscar_jogos():
+    url = f"https://sua-api-real.com/jogos?token={API_TOKEN}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()  # Retorna lista de jogos
+    else:
+        return []
+
+# Função para buscar odds gratuitas (ex: The Odds API gratuita)
+def buscar_odds(game_id):
+    url = f"https://api-odds-free.com/odds/{game_id}"  # exemplo
+    headers = {"Authorization": f"Bearer {API_TOKEN}"}
     response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        return None
-    
-    data = response.json()
-    bilhetes = []
-    
-    # Montar bilhetes de exemplo (você pode detalhar mais: escanteios, finalizações, etc.)
-    for match in data.get("matches", [])[:5]:  # pegar apenas os 5 primeiros jogos
-        home = match["homeTeam"]["name"]
-        away = match["awayTeam"]["name"]
-        time = home  # exemplo: favorito é o time da casa
-        bilhete = (
-            f"⚽ {home} vs {away} ({match['utcDate'][:16]} UTC)\n"
-            f"🏆 Vitória ou Empate do favorito: {time}\n"
-            f"🔢 Escanteios: +9.5\n"
-            f"🎯 Finalizações 1T: +4.5 | 2T: +3.5\n"
-        )
-        bilhetes.append(bilhete)
-    return bilhetes
+    if response.status_code == 200:
+        return response.json()
+    return {}
+
+# Gerar bilhete profissional
+def gerar_bilhete(jogo):
+    time_casa = jogo['time_casa']
+    time_fora = jogo['time_fora']
+    gols_over = jogo.get('over_gols', 2.5)
+    handicap = jogo.get('handicap', '-1.0')
+    escanteios = jogo.get('escanteios', 5.5)
+    finalizacoes_1t = jogo.get('finalizacoes_1t', 4)
+    finalizacoes_2t = jogo.get('finalizacoes_2t', 3.5)
+    odd_over = jogo.get('odd_over', 1.85)
+    odd_handicap = jogo.get('odd_handicap', 2.0)
+
+    mensagem = (
+        f"🏆 {time_casa} vs {time_fora}\n"
+        f"📊 Favorito: Vitória ou Empate {time_casa}\n"
+        f"📈 Handicap {time_casa} {handicap} @{odd_handicap}\n"
+        f"🔢 Escanteios {time_casa} +{escanteios}\n"
+        f"🎯 Finalizações 1T +{finalizacoes_1t} | 2T +{finalizacoes_2t}\n"
+        f"📈 Over {gols_over} gols @{odd_over}"
+    )
+    return mensagem
 
 # Rota principal
-@app.route('/')
-def home():
-    return render_template('index.html')
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-# Rota para buscar oportunidades e enviar Telegram
-@app.route('/buscar', methods=['POST'])
+# Rota para buscar oportunidades
+@app.route("/buscar", methods=["POST"])
 def buscar():
-    bilhetes = buscar_oportunidades()
-    if not bilhetes:
-        return jsonify({"status": "erro", "msg": "Erro ao carregar bilhetes"}), 500
-    
     try:
-        for b in bilhetes:
-            bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=b)
+        jogos = buscar_jogos()
+        if not jogos:
+            return jsonify({"erro": "Nenhum jogo encontrado"}), 404
+
+        for jogo in jogos:
+            odds = buscar_odds(jogo['id'])
+            jogo.update(odds)  # adiciona odds aos dados do jogo
+            bilhete = gerar_bilhete(jogo)
+            bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=bilhete)
+
+        return jsonify({"sucesso": "Bilhetes enviados com sucesso!"})
     except Exception as e:
-        return jsonify({"status": "erro", "msg": f"Erro ao enviar Telegram: {e}"}), 500
+        return jsonify({"erro": str(e)}), 500
 
-    return jsonify({"status": "sucesso", "msg": "Bilhetes enviados com sucesso!"})
-
-# Rodar app
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+    app.run(debug=True, host="0.0.0.0", port=5000)
