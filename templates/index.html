@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Busca - Telegram Bot</title>
+    <title>BetFinder - Sistema de Análise de Apostas</title>
     <style>
         * {
             margin: 0;
@@ -13,81 +13,105 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            color: #333;
         }
 
         .container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
             text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
         }
 
         .logo {
-            font-size: 2.5rem;
+            font-size: 3rem;
             margin-bottom: 10px;
         }
 
         h1 {
-            color: #333;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            font-size: 1.8rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .subtitle {
-            color: #666;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
             margin-bottom: 30px;
-            font-size: 1rem;
         }
 
-        .search-form {
-            margin-bottom: 30px;
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .input-group {
-            position: relative;
-            margin-bottom: 20px;
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 15px 20px;
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #2a5298;
+        }
+
+        select, button {
+            padding: 12px 15px;
             border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 14px;
             transition: all 0.3s ease;
         }
 
-        input[type="text"]:focus {
+        select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #1e3c72;
         }
 
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.4);
         }
 
         button:disabled {
@@ -96,19 +120,136 @@
             transform: none;
         }
 
+        .results {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .jogo-item {
+            border: 1px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .jogo-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .jogo-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .times {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        .status {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status.ao-vivo {
+            background: #f44336;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .odds-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .odd-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .odd-valor {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e3c72;
+        }
+
+        .odd-label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .jogo-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .valor-aposta {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .alerta {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .alerta.excelente {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .alerta.boa {
+            background: #FFC107;
+            color: black;
+        }
+
+        .alerta.interessante {
+            background: #2196F3;
+            color: white;
+        }
+
+        .alerta.analisar {
+            background: #9E9E9E;
+            color: white;
+        }
+
         .loading {
             display: none;
-            margin-top: 20px;
+            text-align: center;
+            padding: 40px;
         }
 
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c72;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto;
+            margin: 0 auto 20px;
         }
 
         @keyframes spin {
@@ -116,150 +257,283 @@
             100% { transform: rotate(360deg); }
         }
 
-        .result {
-            display: none;
-            margin-top: 20px;
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
             padding: 20px;
-            border-radius: 10px;
-            background: #f8f9fa;
-            text-align: left;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
-        .success {
-            border-left: 4px solid #28a745;
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 5px;
         }
 
-        .error {
-            border-left: 4px solid #dc3545;
-        }
-
-        .status-info {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e7f3ff;
-            border-radius: 10px;
-            border-left: 4px solid #007bff;
-        }
-
-        .footer {
-            margin-top: 30px;
+        .stat-label {
             color: #666;
             font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .bookmakers {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🤖</div>
-        <h1>Sistema de Busca</h1>
-        <p class="subtitle">Envie buscas diretamente para o Telegram</p>
-        
-        <form class="search-form" id="searchForm">
-            <div class="input-group">
-                <input type="text" id="searchTerm" placeholder="Digite o termo de busca..." required>
+        <div class="header">
+            <div class="logo">🎯</div>
+            <h1>BetFinder Pro</h1>
+            <p class="subtitle">Sistema Inteligente de Análise de Apostas Esportivas</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalJogos">0</div>
+                <div class="stat-label">Jogos Analisados</div>
             </div>
-            <button type="submit" id="searchButton">
-                🔍 Buscar e Enviar
-            </button>
-        </form>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p style="margin-top: 10px;">Processando sua busca...</p>
+            <div class="stat-card">
+                <div class="stat-number" id="totalOportunidades">0</div>
+                <div class="stat-label">Oportunidades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalAoVivo">0</div>
+                <div class="stat-label">Jogos Ao Vivo</div>
+            </div>
         </div>
 
-        <div class="result" id="result"></div>
+        <div class="dashboard">
+            <div class="card controls">
+                <h3>⚙️ Configurações de Busca</h3>
+                <div class="form-group">
+                    <label for="esporte">Esporte:</label>
+                    <select id="esporte">
+                        <option value="soccer">Futebol</option>
+                        <option value="basketball_nba">NBA</option>
+                        <option value="americanfootball_nfl">NFL</option>
+                        <option value="baseball_mlb">MLB</option>
+                        <option value="icehockey_nhl">NHL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regiao">Região:</label>
+                    <select id="regiao">
+                        <option value="eu">Europa</option>
+                        <option value="us">EUA</option>
+                        <option value="uk">Reino Unido</option>
+                        <option value="au">Austrália</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mercado">Mercado:</label>
+                    <select id="mercado">
+                        <option value="h2h">Head-to-Head</option>
+                        <option value="spreads">Handicap</option>
+                        <option value="totals">Over/Under</option>
+                    </select>
+                </div>
+                <button onclick="buscarOdds()" id="buscarBtn">
+                    🔍 Buscar Oportunidades
+                </button>
+                <button onclick="testarTelegram()" id="testeBtn" style="background: #4CAF50;">
+                    🤖 Testar Telegram
+                </button>
+            </div>
 
-        <div class="status-info" id="statusInfo">
-            <strong>Status do Sistema:</strong><br>
-            <span id="systemStatus">Verificando...</span>
-        </div>
-
-        <div class="footer">
-            &copy; 2025 Sistema Flask + Telegram Bot
+            <div class="card results">
+                <h3>📊 Resultados das Análises</h3>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analisando oportunidades de apostas...</p>
+                </div>
+                <div id="resultadosContainer"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('searchForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const searchTerm = document.getElementById('searchTerm').value;
-            const searchButton = document.getElementById('searchButton');
+        async function buscarOdds() {
+            const buscarBtn = document.getElementById('buscarBtn');
             const loading = document.getElementById('loading');
-            const result = document.getElementById('result');
+            const resultadosContainer = document.getElementById('resultadosContainer');
+            
+            // Obter configurações
+            const esporte = document.getElementById('esporte').value;
+            const regiao = document.getElementById('regiao').value;
+            const mercado = document.getElementById('mercado').value;
             
             // Mostrar loading
-            searchButton.disabled = true;
+            buscarBtn.disabled = true;
+            buscarBtn.innerHTML = '⏳ Analisando...';
             loading.style.display = 'block';
-            result.style.display = 'none';
+            resultadosContainer.innerHTML = '';
             
             try {
-                const response = await fetch('/buscar', {
+                const response = await fetch('/buscar_odds', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        termo: searchTerm
+                        esporte: esporte,
+                        regiao: regiao,
+                        mercado: mercado
                     })
                 });
                 
                 const data = await response.json();
                 
-                // Mostrar resultado
-                result.style.display = 'block';
                 if (data.status === 'success') {
-                    result.className = 'result success';
-                    result.innerHTML = `
-                        <strong>✅ Sucesso!</strong>
-                        <p>Busca realizada com sucesso e enviada para o Telegram.</p>
-                        <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                            <strong>Termo:</strong> ${data.data.termo}<br>
-                            <strong>Resultado:</strong> ${data.data.resultado}<br>
-                            <strong>Horário:</strong> ${new Date(data.data.timestamp).toLocaleString()}
+                    exibirResultados(data.data.jogos);
+                    atualizarStats(data.data.jogos);
+                } else {
+                    resultadosContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>❌ Erro na Análise</h3>
+                            <p>${data.message || 'Erro ao buscar dados'}</p>
                         </div>
                     `;
-                } else {
-                    result.className = 'result error';
-                    result.innerHTML = `
-                        <strong>❌ Erro!</strong>
-                        <p>${data.message || 'Erro ao processar a busca'}</p>
-                    `;
                 }
                 
             } catch (error) {
-                result.style.display = 'block';
-                result.className = 'result error';
-                result.innerHTML = `
-                    <strong>❌ Erro de Conexão!</strong>
-                    <p>Não foi possível conectar ao servidor.</p>
+                resultadosContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Erro de Conexão</h3>
+                        <p>Não foi possível conectar ao servidor.</p>
+                    </div>
                 `;
             } finally {
-                searchButton.disabled = false;
+                buscarBtn.disabled = false;
+                buscarBtn.innerHTML = '🔍 Buscar Oportunidades';
                 loading.style.display = 'none';
-            }
-        });
-
-        // Verificar status do sistema ao carregar a página
-        async function checkSystemStatus() {
-            try {
-                const response = await fetch('/info');
-                const data = await response.json();
-                
-                const statusElement = document.getElementById('systemStatus');
-                if (data.telegram_configured) {
-                    statusElement.innerHTML = '✅ Sistema operacional - Telegram configurado';
-                } else {
-                    statusElement.innerHTML = '⚠️ Sistema operacional - Telegram não configurado';
-                }
-            } catch (error) {
-                document.getElementById('systemStatus').innerHTML = '❌ Erro ao verificar status do sistema';
             }
         }
 
-        // Chamar ao carregar a página
-        checkSystemStatus();
+        function exibirResultados(jogos) {
+            const container = document.getElementById('resultadosContainer');
+            
+            if (!jogos || jogos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🔍 Nenhum jogo encontrado</h3>
+                        <p>Tente alterar os filtros de busca.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = jogos.map(jogo => `
+                <div class="jogo-item">
+                    <div class="jogo-header">
+                        <div class="times">${jogo.home_team} vs ${jogo.away_team}</div>
+                        <div class="status ${jogo.ao_vivo ? 'ao-vivo' : ''}">
+                            ${jogo.ao_vivo ? '🔴 AO VIVO' : '⏰ PRÉ-JOGO'}
+                        </div>
+                    </div>
+                    
+                    <div class="odds-grid">
+                        <div class="odd-item">
+                            <div class="odd-valor">${jogo.odds.home_win}</div>
+                            <div class="odd-label">CASA</div>
+                        </div>
+                        <div class="odd-item">
+                            <div class="odd-valor">${jogo.odds.draw || 'N/A'}</div>
+                            <div class="odd-label">EMPATE</div>
+                        </div>
+                        <div class="odd-item">
+                            <div class="odd-valor">${jogo.odds.away_win}</div>
+                            <div class="odd-label">FORA</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bookmakers">
+                        <strong>Casas de aposta:</strong> ${jogo.odds.bookmakers.slice(0, 3).join(', ')}
+                        ${jogo.odds.bookmakers.length > 3 ? `... +${jogo.odds.bookmakers.length - 3} mais` : ''}
+                    </div>
+                    
+                    <div class="jogo-footer">
+                        <div>
+                            <div class="valor-aposta">Valor: ${jogo.valor_aposta}/10</div>
+                            <div style="font-size: 0.8rem; color: #666;">${jogo.sport}</div>
+                        </div>
+                        <div class="alerta ${getAlertaClass(jogo.alerta)}">
+                            ${jogo.alerta}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getAlertaClass(alerta) {
+            if (alerta.includes('EXCELENTE')) return 'excelente';
+            if (alerta.includes('BOA')) return 'boa';
+            if (alerta.includes('INTERESSANTE')) return 'interessante';
+            return 'analisar';
+        }
+
+        function atualizarStats(jogos) {
+            document.getElementById('totalJogos').textContent = jogos.length;
+            
+            const oportunidades = jogos.filter(j => j.valor_aposta > 5).length;
+            document.getElementById('totalOportunidades').textContent = oportunidades;
+            
+            const aoVivo = jogos.filter(j => j.ao_vivo).length;
+            document.getElementById('totalAoVivo').textContent = aoVivo;
+        }
+
+        async function testarTelegram() {
+            const testeBtn = document.getElementById('testeBtn');
+            
+            testeBtn.disabled = true;
+            testeBtn.innerHTML = '⏳ Enviando...';
+            
+            try {
+                const response = await fetch('/teste_telegram', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('✅ Mensagem de teste enviada para o Telegram!');
+                } else {
+                    alert('❌ Erro ao enviar mensagem: ' + data.message);
+                }
+                
+            } catch (error) {
+                alert('❌ Erro de conexão');
+            } finally {
+                testeBtn.disabled = false;
+                testeBtn.innerHTML = '🤖 Testar Telegram';
+            }
+        }
+
+        // Buscar automaticamente ao carregar a página
+        window.addEventListener('load', function() {
+            // Iniciar busca automática após 2 segundos
+            setTimeout(buscarOdds, 2000);
+        });
     </script>
 </body>
 </html>
