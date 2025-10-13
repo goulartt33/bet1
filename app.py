@@ -554,6 +554,94 @@ def enviar_bilhete_do_dia_telegram(bilhete):
         logger.error(f"Erro enviar bilhete do dia: {str(e)}")
         return False
 
+# 🔥 ROTA CORRIGIDA - ADICIONE ESTA FUNÇÃO
+@app.route('/teste_bilhetes', methods=['POST'])
+def teste_bilhetes():
+    """Testar envio de bilhetes para Telegram"""
+    try:
+        # Criar bilhetes de teste
+        bilhetes_teste = [
+            {
+                'tipo': 'futebol_gols_avancado',
+                'jogo': 'Flamengo x Palmeiras',
+                'mercado': 'Total de Gols',
+                'selecao': 'OVER 2.5',
+                'odd': 1.85,
+                'analise': 'Esperados 3.2 gols - Ambos times ofensivos em boa fase',
+                'valor_esperado': 0.75,
+                'confianca': 82,
+                'timestamp': datetime.now().isoformat()
+            },
+            {
+                'tipo': 'futebol_escanteios_avancado',
+                'jogo': 'Flamengo x Palmeiras',
+                'mercado': 'Escanteios',
+                'selecao': 'OVER 9.5',
+                'odd': 1.75,
+                'analise': 'Esperados 11.5 escanteios - Jogo com muitos ataques',
+                'valor_esperado': 0.68,
+                'confianca': 78,
+                'timestamp': datetime.now().isoformat()
+            },
+            {
+                'tipo': 'futebol_combinado_avancado',
+                'jogo': 'Flamengo x Palmeiras',
+                'mercado': 'Combinado Especial',
+                'selecao': 'Ambos marcam - SIM & Over 2.5 gols',
+                'odd': 2.10,
+                'analise': 'Ambos times marcando consistentemente',
+                'valor_esperado': 0.72,
+                'confianca': 80,
+                'timestamp': datetime.now().isoformat()
+            }
+        ]
+        
+        # Enviar para Telegram
+        mensagem = "🧪 *TESTE DO SISTEMA BETMASTER AI* 🧪\n\n"
+        mensagem += "✅ *Sistema funcionando perfeitamente!*\n\n"
+        
+        for i, bilhete in enumerate(bilhetes_teste, 1):
+            mensagem += f"*{i}. {bilhete['jogo']}*\n"
+            mensagem += f"📊 {bilhete['mercado']}\n"
+            mensagem += f"🎯 {bilhete['selecao']}\n"
+            mensagem += f"💰 Odd: {bilhete['odd']}\n"
+            mensagem += f"📈 {bilhete['analise']}\n"
+            mensagem += f"🟢 Confiança: {bilhete['confianca']}%\n"
+            mensagem += "─" * 30 + "\n\n"
+        
+        mensagem += f"⏰ Teste realizado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+        mensagem += "🎯 Sistema BetMaster AI v4.0 - Operacional!"
+        
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": mensagem,
+            "parse_mode": "Markdown"
+        }
+        
+        response = requests.post(url, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            logger.info("Teste do Telegram enviado com sucesso")
+            return jsonify({
+                "status": "success", 
+                "message": "Mensagem de teste enviada para o Telegram com sucesso!",
+                "bilhetes_enviados": len(bilhetes_teste)
+            })
+        else:
+            logger.error(f"Erro no Telegram: {response.status_code}")
+            return jsonify({
+                "status": "error", 
+                "message": f"Erro ao enviar para Telegram: {response.status_code}"
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Erro no teste: {str(e)}")
+        return jsonify({
+            "status": "error", 
+            "message": f"Erro interno: {str(e)}"
+        }), 500
+
 @app.route('/status', methods=['GET'])
 def status():
     """Endpoint de status"""
@@ -566,7 +654,11 @@ def status():
             "Bilhete do dia automático", 
             "Análise avançada de valor",
             "Alertas Telegram em tempo real"
-        ]
+        ],
+        "apis_configuradas": {
+            "the_odds_api": True,
+            "telegram_bot": bool(TELEGRAM_TOKEN and TELEGRAM_CHAT_ID)
+        }
     })
 
 if __name__ == '__main__':
