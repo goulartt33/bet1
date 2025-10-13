@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BetMaster - Analisador Inteligente de Bilhetes</title>
+    <title>BetMaster AI - Sistema Inteligente de Apostas</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -28,43 +28,44 @@
             text-align: center;
             color: white;
             margin-bottom: 30px;
-            padding: 30px 20px;
+            padding: 40px 20px;
             background: rgba(255,255,255,0.1);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
         .logo {
-            font-size: 4rem;
-            margin-bottom: 15px;
+            font-size: 4.5rem;
+            margin-bottom: 20px;
         }
 
         h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 3.5rem;
+            margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .subtitle {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             opacity: 0.9;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .tagline {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             opacity: 0.8;
             font-style: italic;
         }
 
         .dashboard {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 25px;
             margin-bottom: 40px;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .dashboard {
                 grid-template-columns: 1fr;
             }
@@ -76,6 +77,15 @@
             padding: 30px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .card-destaque {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .card-destaque h3 {
+            color: white;
         }
 
         .controls {
@@ -134,6 +144,14 @@
             transform: none;
         }
 
+        .btn-destaque {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-destaque:hover {
+            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.4);
+        }
+
         .btn-test {
             background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
         }
@@ -145,6 +163,13 @@
         .results {
             max-height: 700px;
             overflow-y: auto;
+            grid-column: span 2;
+        }
+
+        @media (max-width: 1024px) {
+            .results {
+                grid-column: span 1;
+            }
         }
 
         .bilhete-item {
@@ -159,7 +184,27 @@
         .bilhete-item:hover {
             box-shadow: 0 8px 25px rgba(0,0,0,0.15);
             transform: translateY(-3px);
-            border-color: #0c2461;
+        }
+
+        .bilhete-destaque {
+            border: 3px solid #e74c3c;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bilhete-destaque::before {
+            content: "🔥 BILHETE DO DIA";
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: #e74c3c;
+            color: white;
+            padding: 8px 40px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            transform: rotate(45deg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         .bilhete-header {
@@ -184,6 +229,10 @@
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 600;
+        }
+
+        .tipo-destaque {
+            background: #e74c3c;
         }
 
         .bilhete-detalhes {
@@ -217,6 +266,12 @@
             line-height: 1.4;
         }
 
+        .analise-premium {
+            color: #e74c3c;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
         .detalhes-direita {
             display: flex;
             flex-direction: column;
@@ -229,6 +284,11 @@
             font-size: 2rem;
             font-weight: 800;
             color: #27ae60;
+        }
+
+        .odd-destaque {
+            color: #e74c3c;
+            font-size: 2.2rem;
         }
 
         .valor-esperado {
@@ -253,7 +313,7 @@
         }
 
         .barra-confianca {
-            width: 100px;
+            width: 120px;
             height: 8px;
             background: #ecf0f1;
             border-radius: 4px;
@@ -337,33 +397,57 @@
             color: #2c3e50;
         }
 
-        .alerta-bilhete {
-            position: relative;
-            border-left: 5px solid #e74c3c;
-            background: #fff5f5;
+        .section-title {
+            color: white;
+            margin: 40px 0 20px 0;
+            font-size: 2rem;
+            text-align: center;
         }
 
-        .alerta-bilhete::before {
-            content: "🔥 HOT";
-            position: absolute;
-            top: -10px;
-            right: -10px;
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
             background: #e74c3c;
             color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
+            border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #0c2461;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: rgba(255,255,255,0.2);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🎯🤖</div>
-            <h1>BetMaster AI</h1>
-            <p class="subtitle">Sistema Inteligente de Análise e Criação de Bilhetes</p>
-            <p class="tagline">Algoritmos avançados identificando as melhores oportunidades</p>
+            <div class="logo">🎯🤖🔥</div>
+            <h1>BetMaster AI v4.0</h1>
+            <p class="subtitle">Sistema Inteligente com Bilhete do Dia e Análise Avançada</p>
+            <p class="tagline">Algoritmos de machine learning identificando as melhores oportunidades do mercado</p>
         </div>
 
         <div class="stats">
@@ -384,6 +468,8 @@
                 <div class="stat-label">Taxa Esperada</div>
             </div>
         </div>
+
+        <h2 class="section-title">🎯 Controles de Análise</h2>
 
         <div class="dashboard">
             <div class="card controls">
@@ -413,23 +499,45 @@
                         <option value="h2h">🎯 Head-to-Head</option>
                         <option value="totals">📊 Totais (Over/Under)</option>
                         <option value="spreads">⚖️ Handicap</option>
+                        <option value="outrights">🏆 Outrights</option>
                     </select>
                 </div>
                 <button onclick="analisarJogos()" id="analisarBtn">
                     🤖 Analisar & Gerar Bilhetes
+                </button>
+                <button onclick="buscarBilheteDoDia()" id="bilheteDiaBtn" class="btn-destaque">
+                    🔥 Buscar Bilhete do Dia
                 </button>
                 <button onclick="testarBilhetes()" id="testeBtn" class="btn-test">
                     🧪 Testar no Telegram
                 </button>
             </div>
 
+            <div class="card card-destaque">
+                <h3>⭐ BILHETE DO DIA</h3>
+                <div id="bilheteDiaContainer">
+                    <div class="empty-state">
+                        <h3>🔍 Nenhum bilhete do dia</h3>
+                        <p>Clique em "Buscar Bilhete do Dia" para encontrar a melhor oportunidade</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="card results">
-                <h3>📈 Bilhetes Inteligentes Gerados</h3>
+                <h3>📈 Todos os Bilhetes Inteligentes <span class="badge" id="badgeCount">0</span></h3>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="filtrarBilhetes('todos')">Todos</div>
+                    <div class="tab" onclick="filtrarBilhetes('alta')">Alta Confiança</div>
+                    <div class="tab" onclick="filtrarBilhetes('futebol')">Futebol</div>
+                    <div class="tab" onclick="filtrarBilhetes('nba')">NBA</div>
+                </div>
+                
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
                     <p>Analisando dados e gerando bilhetes inteligentes...</p>
                     <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                        Consultando APIs • Processando estatísticas • Calculando valores
+                        Consultando APIs • Processando estatísticas • Calculando valores • Gerando insights
                     </p>
                 </div>
                 <div id="resultadosContainer"></div>
@@ -438,6 +546,9 @@
     </div>
 
     <script>
+        let todosBilhetes = [];
+        let filtroAtual = 'todos';
+
         async function analisarJogos() {
             const analisarBtn = document.getElementById('analisarBtn');
             const loading = document.getElementById('loading');
@@ -468,8 +579,14 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    exibirBilhetes(data.data.bilhetes);
-                    atualizarEstatisticas(data.data.bilhetes);
+                    todosBilhetes = data.data.bilhetes;
+                    exibirBilhetes(todosBilhetes);
+                    atualizarEstatisticas(todosBilhetes);
+                    
+                    // Atualizar bilhete do dia se existir
+                    if (data.data.bilhete_do_dia) {
+                        exibirBilheteDoDia(data.data.bilhete_do_dia);
+                    }
                 } else {
                     resultadosContainer.innerHTML = `
                         <div class="empty-state">
@@ -493,8 +610,95 @@
             }
         }
 
+        async function buscarBilheteDoDia() {
+            const bilheteDiaBtn = document.getElementById('bilheteDiaBtn');
+            const bilheteDiaContainer = document.getElementById('bilheteDiaContainer');
+            
+            bilheteDiaBtn.disabled = true;
+            bilheteDiaBtn.innerHTML = '⏳ Buscando...';
+            bilheteDiaContainer.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Procurando o melhor bilhete do dia...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/bilhete_do_dia', {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    exibirBilheteDoDia(data.bilhete_do_dia);
+                    alert('✅ Bilhete do dia encontrado e enviado para o Telegram!');
+                } else {
+                    bilheteDiaContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>❌ Nenhum bilhete premium</h3>
+                            <p>${data.message || 'Tente analisar mais jogos'}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                bilheteDiaContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Erro de conexão</h3>
+                        <p>Não foi possível buscar o bilhete do dia.</p>
+                    </div>
+                `;
+            } finally {
+                bilheteDiaBtn.disabled = false;
+                bilheteDiaBtn.innerHTML = '🔥 Buscar Bilhete do Dia';
+            }
+        }
+
+        function exibirBilheteDoDia(bilhete) {
+            const container = document.getElementById('bilheteDiaContainer');
+            const confiancaClass = bilhete.confianca >= 80 ? 'confianca-alta' : 
+                                 bilhete.confianca >= 70 ? 'confianca-media' : 'confianca-baixa';
+            
+            container.innerHTML = `
+                <div class="bilhete-item bilhete-destaque">
+                    <div class="bilhete-header">
+                        <div class="jogo-info">${bilhete.jogo}</div>
+                        <div class="bilhete-tipo tipo-destaque">BILHETE DO DIA</div>
+                    </div>
+                    
+                    <div class="bilhete-detalhes">
+                        <div class="detalhes-esquerda">
+                            <div class="mercado">${bilhete.mercado}</div>
+                            <div class="selecao">${bilhete.selecao}</div>
+                            <div class="analise-premium">${bilhete.analise_premium || '🔥 Melhor oportunidade do dia'}</div>
+                            <div class="analise">${bilhete.analise}</div>
+                        </div>
+                        <div class="detalhes-direita">
+                            <div class="odd odd-destaque">${bilhete.odd}</div>
+                            <div class="valor-esperado">Valor: ${bilhete.valor_esperado}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bilhete-footer">
+                        <div class="confianca">
+                            <span>Confiança: ${bilhete.confianca}%</span>
+                            <div class="barra-confianca">
+                                <div class="preenchimento-confianca ${confiancaClass}" 
+                                     style="width: ${bilhete.confianca}%"></div>
+                            </div>
+                        </div>
+                        <div class="timestamp">
+                            ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function exibirBilhetes(bilhetes) {
             const container = document.getElementById('resultadosContainer');
+            const badgeCount = document.getElementById('badgeCount');
             
             if (!bilhetes || bilhetes.length === 0) {
                 container.innerHTML = `
@@ -503,30 +707,44 @@
                         <p>Tente alterar os filtros ou esporte.</p>
                     </div>
                 `;
+                badgeCount.textContent = '0';
                 return;
             }
             
-            container.innerHTML = bilhetes.map((bilhete, index) => {
+            // Aplicar filtro
+            let bilhetesFiltrados = bilhetes;
+            if (filtroAtual === 'alta') {
+                bilhetesFiltrados = bilhetes.filter(b => b.confianca >= 75);
+            } else if (filtroAtual === 'futebol') {
+                bilhetesFiltrados = bilhetes.filter(b => b.tipo.includes('futebol'));
+            } else if (filtroAtual === 'nba') {
+                bilhetesFiltrados = bilhetes.filter(b => b.tipo.includes('nba'));
+            }
+            
+            badgeCount.textContent = bilhetesFiltrados.length;
+            
+            container.innerHTML = bilhetesFiltrados.map((bilhete, index) => {
                 const confiancaClass = bilhete.confianca >= 80 ? 'confianca-alta' : 
                                      bilhete.confianca >= 70 ? 'confianca-media' : 'confianca-baixa';
                 
-                const isHot = bilhete.confianca >= 85 && bilhete.valor_esperado > 0.7;
+                const isDestaque = bilhete.destaque;
                 
                 return `
-                    <div class="bilhete-item ${isHot ? 'alerta-bilhete' : ''}">
+                    <div class="bilhete-item ${isDestaque ? 'bilhete-destaque' : ''}">
                         <div class="bilhete-header">
                             <div class="jogo-info">${bilhete.jogo}</div>
-                            <div class="bilhete-tipo">${bilhete.tipo}</div>
+                            <div class="bilhete-tipo ${isDestaque ? 'tipo-destaque' : ''}">${bilhete.tipo}</div>
                         </div>
                         
                         <div class="bilhete-detalhes">
                             <div class="detalhes-esquerda">
                                 <div class="mercado">${bilhete.mercado}</div>
                                 <div class="selecao">${bilhete.selecao}</div>
+                                ${isDestaque ? `<div class="analise-premium">${bilhete.analise_premium || '⭐ Destaque'}</div>` : ''}
                                 <div class="analise">${bilhete.analise}</div>
                             </div>
                             <div class="detalhes-direita">
-                                <div class="odd">${bilhete.odd}</div>
+                                <div class="odd ${isDestaque ? 'odd-destaque' : ''}">${bilhete.odd}</div>
                                 <div class="valor-esperado">Valor: ${bilhete.valor_esperado}</div>
                             </div>
                         </div>
@@ -548,16 +766,29 @@
             }).join('');
         }
 
+        function filtrarBilhetes(filtro) {
+            filtroAtual = filtro;
+            
+            // Atualizar tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Re-exibir bilhetes com filtro
+            exibirBilhetes(todosBilhetes);
+        }
+
         function atualizarEstatisticas(bilhetes) {
             document.getElementById('totalBilhetes').textContent = bilhetes.length;
             
-            const altaConfianca = bilhetes.filter(b => b.confianca >= 80).length;
+            const altaConfianca = bilhetes.filter(b => b.confianca >= 75).length;
             document.getElementById('altaConfianca').textContent = altaConfianca;
             
             const valorMedio = bilhetes.reduce((sum, b) => sum + b.valor_esperado, 0) / bilhetes.length;
             document.getElementById('valorMedio').textContent = valorMedio.toFixed(2);
             
-            const taxaSucesso = (bilhetes.filter(b => b.confianca >= 75).length / bilhetes.length * 100).toFixed(0);
+            const taxaSucesso = (bilhetes.filter(b => b.confianca >= 70).length / bilhetes.length * 100).toFixed(0);
             document.getElementById('taxaSucesso').textContent = taxaSucesso + '%';
         }
 
@@ -595,11 +826,14 @@
         window.addEventListener('load', function() {
             setTimeout(() => {
                 analisarJogos();
-            }, 1000);
+            }, 1500);
         });
 
-        // Atualizar a cada 2 minutos
-        setInterval(analisarJogos, 120000);
+        // Atualizar a cada 3 minutos
+        setInterval(analisarJogos, 180000);
+        
+        // Buscar bilhete do dia a cada 6 horas
+        setInterval(buscarBilheteDoDia, 21600000);
     </script>
 </body>
 </html>
