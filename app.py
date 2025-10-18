@@ -75,14 +75,35 @@ def gerar_bilhete(jogo):
         commence = datetime.fromisoformat(jogo["commence_time"].replace("Z", "+00:00"))
         data_hora = commence.strftime("%d/%m/%Y %H:%M UTC")
 
-        spread = next((m for m in jogo["bookmakers"][0]["markets"] if m["key"] == "spreads"), None)
-        total = next((m for m in jogo["bookmakers"][0]["markets"] if m["key"] == "totals"), None)
+        # Encontra o primeiro bookmaker disponível
+        bookmaker = next(iter(jogo.get("bookmakers", [])), None)
 
-        linha_spread = spread["outcomes"][0]["point"] if spread else "N/A"
-        odd_spread = spread["outcomes"][0]["price"] if spread else "N/A"
+        spread = None
+        total = None
 
-        linha_total = total["outcomes"][0]["point"] if total else "N/A"
-        odd_total = total["outcomes"][0]["price"] if total else "N/A"
+        if bookmaker:
+            markets = bookmaker.get("markets", [])
+            spread = next((m for m in markets if m["key"] == "spreads"), None)
+            total = next((m for m in markets if m["key"] == "totals"), None)
+
+        linha_spread = "N/A"
+        odd_spread = "N/A"
+        if spread and spread.get("outcomes"):
+            # Tenta encontrar o outcome para o time da casa ou o primeiro disponível
+            home_outcome = next((o for o in spread["outcomes"] if o.get("name") == home_team), None)
+            if home_outcome:
+                linha_spread = home_outcome.get("point", "N/A")
+                odd_spread = home_outcome.get("price", "N/A")
+            elif spread["outcomes"]:
+                # Se não encontrar para o time da casa, pega o primeiro
+                linha_spread = spread["outcomes"][0].get("point", "N/A")
+                odd_spread = spread["outcomes"][0].get("price", "N/A")
+
+        linha_total = "N/A"
+        odd_total = "N/A"
+        if total and total.get("outcomes"):
+            linha_total = total["outcomes"][0].get("point", "N/A")
+            odd_total = total["outcomes"][0].get("price", "N/A")
 
         mensagem = f"""
 🏀 <b>{home_team} vs {away_team}</b> ({data_hora})
