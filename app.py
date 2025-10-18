@@ -29,7 +29,7 @@ def create_http_client():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/json'
         }
-)
+    )
 
 # Verificar se o bot do Telegram está funcionando
 def verify_telegram_bot():
@@ -100,9 +100,6 @@ def gerar_analise_detalhada(jogo):
     status = jogo.get('status', 'SCHEDULED')
     match_id = jogo.get('id')
     
-    # Obter estatísticas se disponíveis
-    estatisticas = obter_estatisticas_jogo(match_id) if match_id else None
-    
     # Gerar análises para diferentes mercados
     analises = []
     
@@ -149,16 +146,6 @@ def gerar_analise_detalhada(jogo):
         "detalhes": f"Times ofensivos com média de {total_finalizacoes} finalizações"
     })
     
-    # 5. Análise de Ambos Marcam
-    confianca_ambos = random.randint(55, 75)
-    analises.append({
-        "mercado": "🔵 Ambos Marcam",
-        "aposta": "Sim" if random.choice([True, False]) else "Não",
-        "confianca": f"{confianca_ambos}%",
-        "odds": f"{random.uniform(1.75, 2.30):.2f}",
-        "detalhes": f"Defesas vulneráveis e ataques eficientes"
-    })
-    
     return {
         "time1": home_team,
         "time2": away_team,
@@ -188,6 +175,92 @@ def analisar_jogos_avancado():
     
     return criar_mensagem_analise(jogos_analisados), jogos_analisados
 
+# BILHETE DO DIA - Função específica
+def gerar_bilhete_do_dia():
+    """Gera o bilhete do dia com as melhores oportunidades"""
+    logger.info("⭐ Gerando Bilhete do Dia...")
+    
+    # Obter jogos das APIs
+    jogos_api = obter_jogos_ao_vivo()
+    
+    if not jogos_api:
+        # Usar jogos simulados se API não retornar
+        jogos_api = [
+            {
+                'homeTeam': {'name': 'Flamengo'},
+                'awayTeam': {'name': 'Palmeiras'}, 
+                'status': 'SCHEDULED',
+                'id': 1
+            },
+            {
+                'homeTeam': {'name': 'Barcelona'},
+                'awayTeam': {'name': 'Real Madrid'},
+                'status': 'SCHEDULED', 
+                'id': 2
+            },
+            {
+                'homeTeam': {'name': 'Bayern Munich'},
+                'awayTeam': {'name': 'Borussia Dortmund'},
+                'status': 'SCHEDULED',
+                'id': 3
+            }
+        ]
+    
+    # Selecionar os 3 melhores jogos para o bilhete do dia
+    jogos_bilhete = []
+    for jogo in jogos_api[:3]:
+        analise = gerar_analise_detalhada(jogo)
+        # Selecionar apenas a melhor aposta de cada jogo para o bilhete
+        melhor_aposta = max(analise['analises'], key=lambda x: int(x['confianca'].replace('%', '')))
+        jogos_bilhete.append({
+            'time1': analise['time1'],
+            'time2': analise['time2'], 
+            'aposta': melhor_aposta['aposta'],
+            'mercado': melhor_aposta['mercado'],
+            'confianca': melhor_aposta['confianca'],
+            'odds': melhor_aposta['odds'],
+            'detalhes': melhor_aposta['detalhes']
+        })
+    
+    return criar_mensagem_bilhete_dia(jogos_bilhete), jogos_bilhete
+
+def criar_mensagem_bilhete_dia(jogos_bilhete):
+    """Cria mensagem formatada para o Bilhete do Dia"""
+    mensagem = "⭐ <b>BILHETE DO DIA - MELHORES OPORTUNIDADES</b>\n\n"
+    mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
+    mensagem += f"⏰ Horário: {datetime.now().strftime('%H:%M')}\n"
+    mensagem += "🎯 <i>Seleção das melhores apostas do dia</i>\n\n"
+    
+    total_odds = 1.0
+    
+    for i, jogo in enumerate(jogos_bilhete, 1):
+        mensagem += f"⚽ <b>Jogo {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
+        mensagem += f"🎲 {jogo['mercado']}: {jogo['aposta']}\n"
+        mensagem += f"📊 Confiança: {jogo['confianca']}\n"
+        mensagem += f"💰 Odds: {jogo['odds']}\n"
+        mensagem += f"💡 {jogo['detalhes']}\n\n"
+        
+        # Calcular odd total
+        try:
+            total_odds *= float(jogo['odds'])
+        except:
+            pass
+    
+    total_odds = round(total_odds, 2)
+    potencial_retorno = round(total_odds * 10, 2)  # Para aposta de R$10
+    
+    mensagem += f"🎫 <b>ODD TOTAL: {total_odds}</b>\n"
+    mensagem += f"💵 <b>Retorno potencial (R$10): R${potencial_retorno}</b>\n\n"
+    
+    mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
+    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
+    mensagem += "• Este bilhete contém as melhores oportunidades do dia\n"
+    mensagem += "• Nunca aposte mais do que pode perder\n\n"
+    
+    mensagem += "🔔 <i>Boa sorte e apostas responsáveis!</i>"
+    
+    return mensagem
+
 def obter_jogos_ao_vivo():
     """Obtém jogos ao vivo da Football API"""
     url = "https://api.football-data.org/v4/matches"
@@ -210,16 +283,12 @@ def analisar_jogos_simulados():
         ("Flamengo", "Palmeiras"),
         ("Barcelona", "Real Madrid"),
         ("Bayern Munich", "Borussia Dortmund"),
-        ("Manchester City", "Liverpool"),
-        ("PSG", "Marseille"),
-        ("Chelsea", "Arsenal"),
-        ("Juventus", "Inter Milan"),
-        ("Atlético Madrid", "Sevilla")
+        ("Manchester City", "Liverpool")
     ]
     
     jogos_analisados = []
     
-    for time1, time2 in times_famosos[:4]:  # 4 jogos simulados
+    for time1, time2 in times_famosos[:3]:
         analises = []
         
         # Gerar 3-4 análises por jogo
@@ -320,7 +389,7 @@ def analisar_jogos_route():
             "jogos_analisados": len(jogos),
             "tempo_analise": f"{tempo_analise}s",
             "telegram_enviado": sucesso_telegram,
-            "jogos": jogos  # Agora enviando os jogos detalhados para o HTML
+            "jogos": jogos
         })
         
     except Exception as e:
@@ -330,15 +399,34 @@ def analisar_jogos_route():
             "mensagem": f"Erro na análise: {str(e)}"
         }), 500
 
-@app.route('/bilhete_do_dia')
-def bilhete_do_dia():
-    mensagem, jogos = analisar_jogos_avancado()
-    return jsonify({
-        "status": "success", 
-        "mensagem": "Bilhete do dia gerado com sucesso!",
-        "timestamp": datetime.now().isoformat(),
-        "jogos": jogos
-    })
+# NOVA ROTA: Bilhete do Dia
+@app.route('/bilhete_do_dia', methods=['POST'])
+def bilhete_do_dia_route():
+    try:
+        inicio = time.time()
+        mensagem, bilhete = gerar_bilhete_do_dia()
+        tempo_geracao = round(time.time() - inicio, 2)
+        
+        # Enviar para Telegram
+        sucesso_telegram = enviar_telegram(mensagem)
+        
+        logger.info(f"⭐ Bilhete do Dia gerado em {tempo_geracao}s | Telegram: {sucesso_telegram}")
+        
+        return jsonify({
+            "status": "success",
+            "mensagem": "Bilhete do Dia gerado e enviado para Telegram!" if sucesso_telegram else "Bilhete do Dia gerado, mas não foi possível enviar ao Telegram",
+            "tipo": "bilhete_dia",
+            "tempo_geracao": f"{tempo_geracao}s",
+            "telegram_enviado": sucesso_telegram,
+            "bilhete": bilhete
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao gerar bilhete do dia: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "mensagem": f"Erro ao gerar bilhete do dia: {str(e)}"
+        }), 500
 
 @app.route('/teste_bilhetes', methods=['POST'])
 def teste_bilhetes():
