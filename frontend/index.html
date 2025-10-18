@@ -146,12 +146,6 @@
             color: white;
         }
 
-        .card-premium {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            color: white;
-            border: 2px solid #ffd700;
-        }
-
         .controls {
             display: flex;
             flex-direction: column;
@@ -168,9 +162,6 @@
             font-weight: 700;
             color: #0c2461;
             font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         select, button {
@@ -193,10 +184,6 @@
             border: none;
             font-weight: 700;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
             font-size: 1.1rem;
             transition: all 0.3s ease;
         }
@@ -241,11 +228,6 @@
         .btn-premium {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
             font-weight: 800;
-            border: 2px solid #ffd700;
-        }
-
-        .btn-premium:hover {
-            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
         }
 
         .modo-selector {
@@ -300,7 +282,7 @@
             padding: 25px;
             margin-bottom: 20px;
             transition: all 0.3s ease;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            background: white;
             position: relative;
         }
 
@@ -312,58 +294,11 @@
         .bilhete-destaque {
             border: 3px solid #e74c3c;
             background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .bilhete-destaque::before {
-            content: "🔥 BILHETE PREMIUM";
-            position: absolute;
-            top: 10px;
-            right: -30px;
-            background: #e74c3c;
-            color: white;
-            padding: 8px 40px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            transform: rotate(45deg);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         .bilhete-real {
             border-left: 5px solid #009c3b;
             background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
-        }
-
-        .bilhete-real::after {
-            content: "🎯 ALTA ASSERTIVIDADE";
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #009c3b;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        .bilhete-profissional {
-            border-left: 5px solid #3498db;
-            background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
-        }
-
-        .bilhete-profissional::after {
-            content: "💼 PROFISSIONAL";
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #3498db;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
         }
 
         .bilhete-header {
@@ -392,14 +327,6 @@
 
         .tipo-destaque {
             background: #e74c3c;
-        }
-
-        .tipo-real {
-            background: #009c3b;
-        }
-
-        .tipo-profissional {
-            background: #3498db;
         }
 
         .bilhete-detalhes {
@@ -433,33 +360,6 @@
             line-height: 1.4;
         }
 
-        .analise-premium {
-            color: #e74c3c;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-
-        .analise-real {
-            color: #009c3b;
-            font-weight: 600;
-        }
-
-        .analise-profissional {
-            color: #3498db;
-            font-weight: 600;
-        }
-
-        .estrategia {
-            display: inline-block;
-            background: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #6c757d;
-            border: 1px solid #e9ecef;
-        }
-
         .detalhes-direita {
             display: flex;
             flex-direction: column;
@@ -477,20 +377,6 @@
         .odd-destaque {
             color: #e74c3c;
             font-size: 2.2rem;
-        }
-
-        .odd-real {
-            color: #009c3b;
-        }
-
-        .odd-profissional {
-            color: #3498db;
-        }
-
-        .valor-esperado {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #2980b9;
         }
 
         .bilhete-footer {
@@ -565,7 +451,6 @@
             padding: 25px;
             text-align: center;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
             transition: all 0.3s ease;
         }
 
@@ -604,7 +489,6 @@
             margin: 40px 0 20px 0;
             font-size: 2rem;
             text-align: center;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .badge {
@@ -616,14 +500,6 @@
             font-size: 0.7rem;
             font-weight: 700;
             margin-left: 10px;
-        }
-
-        .badge-real {
-            background: #009c3b;
-        }
-
-        .badge-premium {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
         }
 
         .tabs {
@@ -648,10 +524,6 @@
             color: #0c2461;
         }
 
-        .tab:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
         .info-alerta {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
@@ -665,12 +537,6 @@
             background: #d1ecf1;
             border-color: #bee5eb;
             color: #0c5460;
-        }
-
-        .info-alerta.premium {
-            background: linear-gradient(135deg, #fff5f5, #ffeaa7);
-            border: 2px solid #ff6b6b;
-            color: #721c24;
         }
 
         .status-indicator {
@@ -687,12 +553,6 @@
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
-        }
-
-        .status-offline {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
         }
 
         .pulse {
@@ -724,54 +584,25 @@
             font-size: 0.7rem;
             font-weight: 700;
         }
-
-        .nivel-indicator {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-left: 8px;
-        }
-
-        .nivel-premium {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .nivel-profissional {
-            background: #3498db;
-            color: white;
-        }
-
-        .nivel-seguro {
-            background: #27ae60;
-            color: white;
-        }
-
-        .nivel-tecnico {
-            background: #9b59b6;
-            color: white;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🎯🤖🏆</div>
+            <div class="logo">BETMASTER PRO</div>
             <h1>BetMaster PRO</h1>
-            <div class="premium-badge">SISTEMA PROFISSIONAL - TECNOLOGIA AVANÇADA</div>
-            <p class="subtitle">Algoritmos de Machine Learning e Análise Multivariada</p>
+            <div class="premium-badge">SISTEMA PROFISSIONAL - TECNOLOGIA AVANCADA</div>
+            <p class="subtitle">Algoritmos de Machine Learning e Analise Multivariada</p>
             <p class="tagline">Assertividade comprovada: 72-78% | Sistema para apostadores profissionais</p>
             
             <div class="status-indicator status-online pulse">
                 <div style="width: 10px; height: 10px; background: #28a745; border-radius: 50%;"></div>
-                <span>🟢 SISTEMA PROFISSIONAL ONLINE - ALTA ASSERTIVIDADE</span>
+                <span>SISTEMA PROFISSIONAL ONLINE - ALTA ASSERTIVIDADE</span>
             </div>
         </div>
 
-        <div class="info-alerta premium">
-            <strong>🚀 SISTEMA ATUALIZADO PARA VERSÃO PRO!</strong> Novos algoritmos avançados, múltiplos modos de análise e tecnologia de ponta para resultados superiores.
+        <div class="info-alerta">
+            <strong>SISTEMA ATUALIZADO PARA VERSAO PRO!</strong> Novos algoritmos avancados, multiplos modos de analise e tecnologia de ponta para resultados superiores.
         </div>
 
         <div class="stats">
@@ -781,11 +612,11 @@
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="altaConfianca">0</div>
-                <div class="stat-label">Alta Confiança</div>
+                <div class="stat-label">Alta Confianca</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="valorMedio">0.0</div>
-                <div class="stat-label">Valor Médio</div>
+                <div class="stat-label">Valor Medio</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="taxaSucesso">72%</div>
@@ -793,111 +624,105 @@
             </div>
         </div>
 
-        <h2 class="section-title">🎯 Painel de Controle Profissional</h2>
+        <h2 class="section-title">Painel de Controle Profissional</h2>
 
         <div class="dashboard">
             <div class="card controls">
-                <h3>⚙️ Controles Avançados</h3>
+                <h3>Controles Avancados</h3>
                 
                 <div class="form-group">
-                    <label for="modoAnalise">🎯 Modo de Análise:</label>
+                    <label for="modoAnalise">Modo de Analise:</label>
                     <div class="modo-selector">
                         <div class="modo-btn conservador active" onclick="selecionarModo('conservador')">
-                            🛡️ Conservador
+                            Conservador
                         </div>
                         <div class="modo-btn profissional" onclick="selecionarModo('profissional')">
-                            💼 Profissional
+                            Profissional
                         </div>
                         <div class="modo-btn agressivo" onclick="selecionarModo('agressivo')">
-                            ⚡ Agressivo
+                            Agressivo
                         </div>
                     </div>
                     
                     <div class="modo-info" id="modoInfo">
-                        <h4>🛡️ Modo Conservador</h4>
+                        <h4>Modo Conservador</h4>
                         <p><strong>Assertividade:</strong> 75-80%</p>
                         <p><strong>Risco:</strong> Baixo | <strong>Retorno:</strong> Moderado</p>
-                        <p>💡 Ideal para iniciantes e gestão conservadora de bankroll</p>
+                        <p>Ideal para iniciantes e gestao conservadora de bankroll</p>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="esporte">📊 Esporte:</label>
+                    <label for="esporte">Esporte:</label>
                     <select id="esporte">
-                        <option value="soccer_brazil_campeonato">🇧🇷 Brasileirão Série A</option>
-                        <option value="soccer_brazil_serie_b">🇧🇷 Brasileirão Série B</option>
-                        <option value="soccer_england_pl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
-                        <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
-                        <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
-                        <option value="soccer_uefa_champs_league">🏆 Champions League</option>
-                        <option value="soccer">⚽ Futebol (Geral)</option>
+                        <option value="soccer_brazil_campeonato">Brasileirao Serie A</option>
+                        <option value="soccer_brazil_serie_b">Brasileirao Serie B</option>
+                        <option value="soccer_england_pl">Premier League</option>
+                        <option value="soccer_spain_la_liga">La Liga</option>
+                        <option value="soccer_italy_serie_a">Serie A</option>
+                        <option value="soccer_uefa_champs_league">Champions League</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label for="regiao">🌍 Região:</label>
+                    <label for="regiao">Regiao:</label>
                     <select id="regiao">
-                        <option value="br">🇧🇷 Brasil</option>
-                        <option value="eu">🇪🇺 Europa</option>
-                        <option value="us">🇺🇸 EUA</option>
-                        <option value="uk">🇬🇧 Reino Unido</option>
+                        <option value="br">Brasil</option>
+                        <option value="eu">Europa</option>
+                        <option value="us">EUA</option>
+                        <option value="uk">Reino Unido</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label for="mercado">🎯 Mercado:</label>
+                    <label for="mercado">Mercado:</label>
                     <select id="mercado">
-                        <option value="h2h">⚔️ Head-to-Head</option>
-                        <option value="totals">📊 Totais (Over/Under)</option>
-                        <option value="spreads">⚖️ Handicap</option>
-                        <option value="btts">🎯 Ambos Marcam</option>
+                        <option value="h2h">Head-to-Head</option>
+                        <option value="totals">Totais (Over/Under)</option>
+                        <option value="spreads">Handicap</option>
+                        <option value="btts">Ambos Marcam</option>
                     </select>
                 </div>
                 
                 <button onclick="analisarJogos()" id="analisarBtn" class="btn-premium">
-                    🤖 Análise Profissional
+                    Analise Profissional
                 </button>
                 
                 <button onclick="buscarBilhetePremium()" id="bilhetePremiumBtn" class="btn-destaque">
-                    🏆 Buscar Bilhete Premium
+                    Buscar Bilhete Premium
                 </button>
                 
                 <button onclick="analisarBrasileirao()" id="brasilBtn" class="btn-brasil">
-                    🇧🇷 Análise Brasileirão
+                    Analise Brasileirao
                 </button>
 
                 <button onclick="testarSistema()" id="testeBtn" class="btn-test">
-                    🧪 Testar Sistema
+                    Testar Sistema
                 </button>
             </div>
 
             <div class="card card-destaque">
-                <h3>⭐ BILHETE PREMIUM</h3>
+                <h3>BILHETE PREMIUM</h3>
                 <div id="bilhetePremiumContainer">
                     <div class="empty-state">
-                        <h3>🔍 Nenhum bilhete premium</h3>
+                        <h3>Nenhum bilhete premium</h3>
                         <p>Clique em "Buscar Bilhete Premium" para a melhor oportunidade do dia</p>
                     </div>
                 </div>
             </div>
 
             <div class="card results">
-                <h3>📈 Bilhetes Inteligentes <span class="badge badge-premium" id="badgeCount">0</span></h3>
+                <h3>Bilhetes Inteligentes <span class="badge" id="badgeCount">0</span></h3>
                 
                 <div class="tabs">
                     <div class="tab active" onclick="filtrarBilhetes('todos')">Todos</div>
                     <div class="tab" onclick="filtrarBilhetes('premium')">Premium</div>
-                    <div class="tab" onclick="filtrarBilhetes('alta')">Alta Confiança</div>
-                    <div class="tab" onclick="filtrarBilhetes('profissional')">Profissional</div>
-                    <div class="tab" onclick="filtrarBilhetes('gols')">Mercado de Gols</div>
+                    <div class="tab" onclick="filtrarBilhetes('alta')">Alta Confianca</div>
                 </div>
                 
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
-                    <p>Executando análise profissional avançada...</p>
-                    <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                        🔍 Buscando odds em tempo real • 🤖 Machine Learning • 📊 Análise multivariada • 🎯 Cálculo de valor
-                    </p>
+                    <p>Executando analise profissional avancada...</p>
                 </div>
                 
                 <div id="resultadosContainer"></div>
@@ -905,7 +730,7 @@
         </div>
 
         <div class="info-alerta success">
-            <strong>💡 Sistema BetMaster PRO:</strong> Tecnologia de ponta com algoritmos avançados, análise multivariada 
+            <strong>Sistema BetMaster PRO:</strong> Tecnologia de ponta com algoritmos avancados, analise multivariada 
             e machine learning para identificar as melhores oportunidades do mercado. Assertividade comprovada de 72-78% 
             em testes internos.
         </div>
@@ -917,21 +742,21 @@
         let modoAtual = 'conservador';
         const modosInfo = {
             'conservador': {
-                titulo: '🛡️ Modo Conservador',
+                titulo: 'Modo Conservador',
                 assertividade: '75-80%',
                 risco: 'Baixo',
                 retorno: 'Moderado',
-                descricao: 'Ideal para iniciantes e gestão conservadora de bankroll'
+                descricao: 'Ideal para iniciantes e gestao conservadora de bankroll'
             },
             'profissional': {
-                titulo: '💼 Modo Profissional', 
+                titulo: 'Modo Profissional', 
                 assertividade: '70-75%',
-                risco: 'Médio',
+                risco: 'Medio',
                 retorno: 'Bom',
                 descricao: 'Balanceado entre risco e retorno - Recomendado'
             },
             'agressivo': {
-                titulo: '⚡ Modo Agressivo',
+                titulo: 'Modo Agressivo',
                 assertividade: '65-70%',
                 risco: 'Alto', 
                 retorno: 'Alto',
@@ -942,20 +767,18 @@
         function selecionarModo(modo) {
             modoAtual = modo;
             
-            // Atualizar botões
             document.querySelectorAll('.modo-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            // Atualizar info
             const info = modosInfo[modo];
             const modoInfo = document.getElementById('modoInfo');
             modoInfo.innerHTML = `
                 <h4>${info.titulo}</h4>
                 <p><strong>Assertividade:</strong> ${info.assertividade}</p>
                 <p><strong>Risco:</strong> ${info.risco} | <strong>Retorno:</strong> ${info.retorno}</p>
-                <p>💡 ${info.descricao}</p>
+                <p>${info.descricao}</p>
             `;
         }
 
@@ -969,7 +792,7 @@
             const mercado = document.getElementById('mercado').value;
             
             analisarBtn.disabled = true;
-            analisarBtn.innerHTML = '⏳ Análise Profissional...';
+            analisarBtn.innerHTML = 'Analisando...';
             loading.style.display = 'block';
             resultadosContainer.innerHTML = '';
             
@@ -998,12 +821,12 @@
                         exibirBilhetePremium(data.data.bilhete_do_dia);
                     }
 
-                    mostrarMensagemSucesso(`✅ ${todosBilhetes.length} bilhetes gerados - Modo ${modoAtual.toUpperCase()}`);
+                    mostrarMensagemSucesso(`${todosBilhetes.length} bilhetes gerados - Modo ${modoAtual.toUpperCase()}`);
                 } else {
                     resultadosContainer.innerHTML = `
                         <div class="empty-state">
-                            <h3>❌ Erro na Análise</h3>
-                            <p>${data.message || 'Serviço temporariamente indisponível'}</p>
+                            <h3>Erro na Analise</h3>
+                            <p>${data.message || 'Servico temporariamente indisponivel'}</p>
                         </div>
                     `;
                 }
@@ -1012,14 +835,13 @@
                 console.error('Erro:', error);
                 resultadosContainer.innerHTML = `
                     <div class="empty-state">
-                        <h3>❌ Erro de Conexão</h3>
-                        <p>Verifique sua conexão e tente novamente.</p>
-                        <p style="margin-top: 10px; font-size: 0.9rem;">Detalhes: ${error.message}</p>
+                        <h3>Erro de Conexao</h3>
+                        <p>Verifique sua conexao e tente novamente.</p>
                     </div>
                 `;
             } finally {
                 analisarBtn.disabled = false;
-                analisarBtn.innerHTML = '🤖 Análise Profissional';
+                analisarBtn.innerHTML = 'Analise Profissional';
                 loading.style.display = 'none';
             }
         }
@@ -1031,12 +853,12 @@
             
             const brasilBtn = document.getElementById('brasilBtn');
             brasilBtn.disabled = true;
-            brasilBtn.innerHTML = '🇧🇷 Analisando...';
+            brasilBtn.innerHTML = 'Analisando...';
             
             await analisarJogos();
             
             brasilBtn.disabled = false;
-            brasilBtn.innerHTML = '🇧🇷 Análise Brasileirão';
+            brasilBtn.innerHTML = 'Analise Brasileirao';
         }
 
         async function buscarBilhetePremium() {
@@ -1044,7 +866,7 @@
             const premiumContainer = document.getElementById('bilhetePremiumContainer');
             
             premiumBtn.disabled = true;
-            premiumBtn.innerHTML = '⏳ Buscando Premium...';
+            premiumBtn.innerHTML = 'Buscando...';
             premiumContainer.innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
@@ -1058,11 +880,11 @@
                 
                 if (data.status === 'success' && data.bilhete_do_dia) {
                     exibirBilhetePremium(data.bilhete_do_dia);
-                    mostrarMensagemSucesso('🏆 Bilhete premium encontrado e enviado para Telegram!');
+                    mostrarMensagemSucesso('Bilhete premium encontrado e enviado para Telegram!');
                 } else {
                     premiumContainer.innerHTML = `
                         <div class="empty-state">
-                            <h3>❌ Nenhum bilhete premium</h3>
+                            <h3>Nenhum bilhete premium</h3>
                             <p>${data.message || 'Tente novamente mais tarde'}</p>
                         </div>
                     `;
@@ -1072,13 +894,13 @@
                 console.error('Erro:', error);
                 premiumContainer.innerHTML = `
                     <div class="empty-state">
-                        <h3>❌ Erro de Conexão</h3>
-                        <p>Verifique sua conexão e tente novamente.</p>
+                        <h3>Erro de Conexao</h3>
+                        <p>Verifique sua conexao e tente novamente.</p>
                     </div>
                 `;
             } finally {
                 premiumBtn.disabled = false;
-                premiumBtn.innerHTML = '🏆 Buscar Bilhete Premium';
+                premiumBtn.innerHTML = 'Buscar Bilhete Premium';
             }
         }
 
@@ -1089,7 +911,7 @@
             if (!bilhetes || bilhetes.length === 0) {
                 resultadosContainer.innerHTML = `
                     <div class="empty-state">
-                        <h3>📭 Nenhum bilhete encontrado</h3>
+                        <h3>Nenhum bilhete encontrado</h3>
                         <p>Tente ajustar os filtros ou selecionar outro esporte/mercado</p>
                     </div>
                 `;
@@ -1106,12 +928,12 @@
                                      bilhete.confianca >= 65 ? 'confianca-media' : 'confianca-baixa';
                 
                 return `
-                    <div class="bilhete-item ${isDestaque ? 'bilhete-destaque' : isReal ? 'bilhete-real' : 'bilhete-profissional'}">
-                        ${isDestaque ? '<div class="score-avancado">🏆 PREMIUM</div>' : ''}
+                    <div class="bilhete-item ${isDestaque ? 'bilhete-destaque' : isReal ? 'bilhete-real' : ''}">
+                        ${isDestaque ? '<div class="score-avancado">PREMIUM</div>' : ''}
                         
                         <div class="bilhete-header">
-                            <div class="jogo-info">${bilhete.jogo || 'Jogo não especificado'}</div>
-                            <div class="bilhete-tipo ${isDestaque ? 'tipo-destaque' : isReal ? 'tipo-real' : 'tipo-profissional'}">
+                            <div class="jogo-info">${bilhete.jogo || 'Jogo nao especificado'}</div>
+                            <div class="bilhete-tipo ${isDestaque ? 'tipo-destaque' : ''}">
                                 ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_', ' ').toUpperCase() : 'BILHETE'}
                             </div>
                         </div>
@@ -1119,32 +941,22 @@
                         <div class="bilhete-detalhes">
                             <div class="detalhes-esquerda">
                                 <div class="mercado">${bilhete.mercado || 'Mercado'}</div>
-                                <div class="selecao">${bilhete.selecao || 'Seleção'}</div>
-                                <div class="analise ${isDestaque ? 'analise-premium' : isReal ? 'analise-real' : 'analise-profissional'}">
-                                    ${bilhete.analise || 'Análise baseada em dados estatísticos'}
-                                </div>
-                                ${bilhete.analise_premium ? `
-                                    <div class="analise-premium">${bilhete.analise_premium}</div>
-                                ` : ''}
-                                <div class="estrategia">
-                                    ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_real', '') : 'Estratégia'} 
-                                    | Valor: ${bilhete.valor_esperado || '0.000'}
+                                <div class="selecao">${bilhete.selecao || 'Selecao'}</div>
+                                <div class="analise">
+                                    ${bilhete.analise || 'Analise baseada em dados estatisticos'}
                                 </div>
                             </div>
                             
                             <div class="detalhes-direita">
-                                <div class="odd ${isDestaque ? 'odd-destaque' : isReal ? 'odd-real' : 'odd-profissional'}">
+                                <div class="odd ${isDestaque ? 'odd-destaque' : ''}">
                                     ${bilhete.odd ? bilhete.odd.toFixed(2) : '0.00'}
-                                </div>
-                                <div class="valor-esperado">
-                                    Valor: ${bilhete.valor_esperado ? bilhete.valor_esperado.toFixed(3) : '0.000'}
                                 </div>
                             </div>
                         </div>
                         
                         <div class="bilhete-footer">
                             <div class="confianca">
-                                <span>Confiança:</span>
+                                <span>Confianca:</span>
                                 <div class="barra-confianca">
                                     <div class="preenchimento-confianca ${confiancaClass}" 
                                          style="width: ${bilhete.confianca || 50}%"></div>
@@ -1168,7 +980,7 @@
             if (!bilhete) {
                 premiumContainer.innerHTML = `
                     <div class="empty-state">
-                        <h3>❌ Nenhum bilhete premium</h3>
+                        <h3>Nenhum bilhete premium</h3>
                         <p>Tente novamente mais tarde</p>
                     </div>
                 `;
@@ -1180,7 +992,7 @@
             
             premiumContainer.innerHTML = `
                 <div class="bilhete-item bilhete-destaque">
-                    <div class="score-avancado">🏆 BILHETE DO DIA</div>
+                    <div class="score-avancado">BILHETE DO DIA</div>
                     
                     <div class="bilhete-header">
                         <div class="jogo-info">${bilhete.jogo}</div>
@@ -1191,15 +1003,8 @@
                         <div class="detalhes-esquerda">
                             <div class="mercado">${bilhete.mercado}</div>
                             <div class="selecao">${bilhete.selecao}</div>
-                            <div class="analise analise-premium">
+                            <div class="analise">
                                 ${bilhete.analise}
-                            </div>
-                            ${bilhete.analise_premium ? `
-                                <div class="analise-premium">${bilhete.analise_premium}</div>
-                            ` : ''}
-                            <div class="estrategia">
-                                ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_real', '') : 'Estratégia'} 
-                                | Valor: ${bilhete.valor_esperado.toFixed(3)}
                             </div>
                         </div>
                         
@@ -1207,15 +1012,12 @@
                             <div class="odd odd-destaque">
                                 ${bilhete.odd.toFixed(2)}
                             </div>
-                            <div class="valor-esperado">
-                                Valor: ${bilhete.valor_esperado.toFixed(3)}
-                            </div>
                         </div>
                     </div>
                     
                     <div class="bilhete-footer">
                         <div class="confianca">
-                            <span>Confiança:</span>
+                            <span>Confianca:</span>
                             <div class="barra-confianca">
                                 <div class="preenchimento-confianca ${confiancaClass}" 
                                      style="width: ${bilhete.confianca}%"></div>
@@ -1233,7 +1035,6 @@
         function filtrarBilhetes(filtro) {
             filtroAtual = filtro;
             
-            // Atualizar tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -1251,12 +1052,6 @@
                 case 'alta':
                     bilhetesFiltrados = todosBilhetes.filter(b => b.confianca >= 70);
                     break;
-                case 'profissional':
-                    bilhetesFiltrados = todosBilhetes.filter(b => b.tipo && b.tipo.includes('profissional'));
-                    break;
-                case 'gols':
-                    bilhetesFiltrados = todosBilhetes.filter(b => b.mercado && b.mercado.includes('Gols'));
-                    break;
             }
             
             exibirBilhetes(bilhetesFiltrados);
@@ -1273,12 +1068,6 @@
             const altaConf = bilhetes.filter(b => b.confianca >= 70).length;
             altaConfianca.textContent = altaConf;
             
-            const valores = bilhetes.map(b => b.valor_esperado || 0).filter(v => v > 0);
-            const valorMedioCalc = valores.length > 0 ? 
-                (valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(3) : '0.000';
-            valorMedio.textContent = valorMedioCalc;
-            
-            // Taxa de sucesso baseada na confiança média
             const confiancaMedia = bilhetes.length > 0 ? 
                 bilhetes.reduce((sum, b) => sum + (b.confianca || 50), 0) / bilhetes.length : 0;
             taxaSucesso.textContent = Math.min(85, Math.max(65, Math.round(confiancaMedia * 0.8))) + '%';
@@ -1287,7 +1076,7 @@
         async function testarSistema() {
             const testeBtn = document.getElementById('testeBtn');
             testeBtn.disabled = true;
-            testeBtn.innerHTML = '🧪 Testando...';
+            testeBtn.innerHTML = 'Testando...';
             
             try {
                 const response = await fetch('/teste_bilhetes', {
@@ -1300,30 +1089,27 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    mostrarMensagemSucesso('✅ ' + data.message);
+                    mostrarMensagemSucesso(data.message);
                 } else {
-                    mostrarMensagemErro('❌ ' + (data.message || 'Erro no teste'));
+                    mostrarMensagemErro(data.message || 'Erro no teste');
                 }
                 
             } catch (error) {
-                mostrarMensagemErro('❌ Erro de conexão: ' + error.message);
+                mostrarMensagemErro('Erro de conexao: ' + error.message);
             } finally {
                 testeBtn.disabled = false;
-                testeBtn.innerHTML = '🧪 Testar Sistema';
+                testeBtn.innerHTML = 'Testar Sistema';
             }
         }
 
         function mostrarMensagemSucesso(mensagem) {
-            // Criar alerta temporário
             const alerta = document.createElement('div');
             alerta.className = 'info-alerta success';
             alerta.innerHTML = `<strong>${mensagem}</strong>`;
             alerta.style.marginTop = '20px';
-            alerta.style.animation = 'fadeIn 0.5s';
             
             document.querySelector('.container').insertBefore(alerta, document.querySelector('.info-alerta.success'));
             
-            // Remover após 5 segundos
             setTimeout(() => {
                 alerta.remove();
             }, 5000);
@@ -1345,18 +1131,16 @@
             }, 5000);
         }
 
-        // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            // Testar conexão inicial
             fetch('/status')
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'online') {
-                        console.log('✅ Sistema conectado:', data);
+                        console.log('Sistema conectado:', data);
                     }
                 })
                 .catch(error => {
-                    console.warn('⚠️ Sistema offline:', error);
+                    console.warn('Sistema offline:', error);
                 });
         });
     </script>
