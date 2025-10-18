@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Configurações das APIs
+# Configuracoes das APIs
 FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', '0b9721f26cfd44d188b5630223a1d1ac')
 THEODDS_API_KEY = os.getenv('THEODDS_API_KEY', '4229efa29d667add58e355309f536a31')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI')
@@ -28,31 +28,31 @@ THEODDS_HEADERS = {
     'X-API-Key': THEODDS_API_KEY
 }
 
-# Variável para controlar último envio
+# Variavel para controlar ultimo envio
 ULTIMO_ENVIO = None
 
-# 🔥 LISTA DE ESPORTES DISPONÍVEIS COM CÓDIGOS REAIS
+# LISTA DE ESPORTES DISPONIVEIS COM CODIGOS REAIS
 ESPORTES_DISPONIVEIS = {
-    'soccer_brazil_campeonato': '🇧🇷 Brasileirão Série A',
-    'soccer_brazil_serie_b': '🇧🇷 Brasileirão Série B', 
-    'soccer_england_pl': '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
-    'soccer_spain_la_liga': '🇪🇸 La Liga',
-    'soccer_italy_serie_a': '🇮🇹 Serie A',
-    'soccer_germany_bundesliga': '🇩🇪 Bundesliga',
-    'soccer_france_ligue_one': '🇫🇷 Ligue 1',
-    'soccer_uefa_champs_league': '🏆 Champions League',
-    'basketball_nba': '🏀 NBA',
-    'americanfootball_nfl': '🏈 NFL'
+    'soccer_brazil_campeonato': 'Brasileirao Serie A',
+    'soccer_brazil_serie_b': 'Brasileirao Serie B', 
+    'soccer_england_pl': 'Premier League',
+    'soccer_spain_la_liga': 'La Liga',
+    'soccer_italy_serie_a': 'Serie A',
+    'soccer_germany_bundesliga': 'Bundesliga',
+    'soccer_france_ligue_one': 'Ligue 1',
+    'soccer_uefa_champs_league': 'Champions League',
+    'basketball_nba': 'NBA',
+    'americanfootball_nfl': 'NFL'
 }
 
 @app.route('/')
 def index():
-    """Página inicial"""
+    """Pagina inicial"""
     return render_template('index.html')
 
 @app.route('/esportes', methods=['GET'])
 def get_esportes():
-    """Retornar lista de esportes disponíveis"""
+    """Retornar lista de esportes disponiveis"""
     return jsonify({
         "status": "success",
         "esportes": ESPORTES_DISPONIVEIS
@@ -63,11 +63,11 @@ def analisar_jogos():
     """Analisar jogos e gerar bilhetes inteligentes com dados REAIS"""
     try:
         data = request.get_json()
-        esporte = data.get('esporte', 'soccer_brazil_campeonato')  # 🔥 Padrão Brasileirão
-        regiao = data.get('regiao', 'br')  # 🔥 Padrão Brasil
+        esporte = data.get('esporte', 'soccer_brazil_campeonato')
+        regiao = data.get('regiao', 'br')
         mercado = data.get('mercado', 'h2h')
         
-        logger.info(f"🎯 Analisando {ESPORTES_DISPONIVEIS.get(esporte, esporte)}")
+        logger.info(f"Analisando {ESPORTES_DISPONIVEIS.get(esporte, esporte)}")
         
         # Buscar dados REAIS das APIs
         odds_data = buscar_odds_reais(esporte, regiao, mercado)
@@ -75,7 +75,7 @@ def analisar_jogos():
         if not odds_data:
             return jsonify({
                 "status": "error", 
-                "message": f"Não foi possível buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente outro esporte."
+                "message": f"Nao foi possível buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente outro esporte."
             }), 500
         
         # Gerar bilhetes inteligentes com dados REAIS
@@ -84,7 +84,7 @@ def analisar_jogos():
         # Gerar Bilhete do Dia
         bilhete_do_dia = gerar_bilhete_do_dia(bilhetes_gerados)
         
-        # 🔥 ENVIAR BILHETES REAIS AUTOMATICAMENTE PARA TELEGRAM
+        # ENVIAR BILHETES REAIS AUTOMATICAMENTE PARA TELEGRAM
         if bilhetes_gerados:
             enviar_bilhetes_reais_telegram(bilhetes_gerados, esporte)
         
@@ -102,7 +102,7 @@ def analisar_jogos():
         })
         
     except Exception as e:
-        logger.error(f"Erro na análise: {str(e)}")
+        logger.error(f"Erro na analise: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 def buscar_odds_reais(esporte, regiao, mercado):
@@ -116,43 +116,42 @@ def buscar_odds_reais(esporte, regiao, mercado):
             'apiKey': THEODDS_API_KEY
         }
         
-        logger.info(f"🌐 Buscando dados REAIS: {esporte} - Região: {regiao}")
+        logger.info(f"Buscando dados REAIS: {esporte} - Regiao: {regiao}")
         response = requests.get(url, params=params, timeout=30)
         
         if response.status_code == 200:
             dados = response.json()
-            logger.info(f"✅ Dados REAIS obtidos: {len(dados)} jogos")
+            logger.info(f"Dados REAIS obtidos: {len(dados)} jogos")
             
             # Log dos primeiros jogos para debug
             for i, jogo in enumerate(dados[:3]):
                 home_team = jogo.get('home_team', 'Time Casa')
                 away_team = jogo.get('away_team', 'Time Fora')
-                logger.info(f"   🎮 Jogo {i+1}: {home_team} x {away_team}")
+                logger.info(f"Jogo {i+1}: {home_team} x {away_team}")
                 
                 if 'bookmakers' in jogo and jogo['bookmakers']:
                     bookmaker = jogo['bookmakers'][0]
-                    logger.info(f"   🏦 Casa: {bookmaker.get('title', 'N/A')}")
+                    logger.info(f"Casa: {bookmaker.get('title', 'N/A')}")
             
             return dados
         else:
-            logger.error(f"❌ Erro API The Odds: {response.status_code}")
-            logger.error(f"❌ Response: {response.text}")
+            logger.error(f"Erro API The Odds: {response.status_code}")
+            logger.error(f"Response: {response.text}")
             return None
             
     except Exception as e:
-        logger.error(f"❌ Erro ao buscar dados reais: {str(e)}")
+        logger.error(f"Erro ao buscar dados reais: {str(e)}")
         return None
 
 def buscar_estatisticas_reais(time):
-    """Buscar estatísticas REAIS de times brasileiros"""
-    # Estatísticas baseadas em dados reais do Brasileirão 2024
+    """Buscar estatisticas REAIS de times brasileiros"""
     times_brasileiros = {
         'flamengo': {'ataque': 2.1, 'defesa': 1.0, 'escanteios': 6.5, 'posse': 58, 'forma': 'Boa'},
-        'palmeiras': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.2, 'posse': 56, 'forma': 'Ótima'},
-        'são paulo': {'ataque': 1.7, 'defesa': 1.1, 'escanteios': 5.8, 'posse': 54, 'forma': 'Boa'},
+        'palmeiras': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.2, 'posse': 56, 'forma': 'Otima'},
+        'sao paulo': {'ataque': 1.7, 'defesa': 1.1, 'escanteios': 5.8, 'posse': 54, 'forma': 'Boa'},
         'corinthians': {'ataque': 1.3, 'defesa': 1.3, 'escanteios': 5.0, 'posse': 48, 'forma': 'Ruim'},
         'botafogo': {'ataque': 1.6, 'defesa': 1.2, 'escanteios': 5.5, 'posse': 52, 'forma': 'Regular'},
-        'grêmio': {'ataque': 1.8, 'defesa': 1.4, 'escanteios': 6.0, 'posse': 55, 'forma': 'Boa'},
+        'gremio': {'ataque': 1.8, 'defesa': 1.4, 'escanteios': 6.0, 'posse': 55, 'forma': 'Boa'},
         'internacional': {'ataque': 1.5, 'defesa': 1.1, 'escanteios': 5.3, 'posse': 53, 'forma': 'Regular'},
         'atl mineiro': {'ataque': 1.4, 'defesa': 1.2, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular'},
         'fortaleza': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.6, 'posse': 49, 'forma': 'Boa'},
@@ -160,24 +159,21 @@ def buscar_estatisticas_reais(time):
         'bragantino': {'ataque': 1.8, 'defesa': 1.3, 'escanteios': 5.9, 'posse': 54, 'forma': 'Boa'},
         'santos': {'ataque': 1.2, 'defesa': 1.6, 'escanteios': 4.8, 'posse': 47, 'forma': 'Ruim'},
         'bahia': {'ataque': 1.5, 'defesa': 1.4, 'escanteios': 5.1, 'posse': 50, 'forma': 'Regular'},
-        'goiás': {'ataque': 1.1, 'defesa': 1.7, 'escanteios': 4.5, 'posse': 46, 'forma': 'Ruim'},
+        'goias': {'ataque': 1.1, 'defesa': 1.7, 'escanteios': 4.5, 'posse': 46, 'forma': 'Ruim'},
         'coritiba': {'ataque': 1.0, 'defesa': 2.0, 'escanteios': 4.2, 'posse': 44, 'forma': 'Ruim'},
-        'cuiabá': {'ataque': 1.3, 'defesa': 1.5, 'escanteios': 4.9, 'posse': 48, 'forma': 'Regular'},
-        'américa mg': {'ataque': 1.1, 'defesa': 1.8, 'escanteios': 4.3, 'posse': 45, 'forma': 'Ruim'},
+        'cuiaba': {'ataque': 1.3, 'defesa': 1.5, 'escanteios': 4.9, 'posse': 48, 'forma': 'Regular'},
+        'america mg': {'ataque': 1.1, 'defesa': 1.8, 'escanteios': 4.3, 'posse': 45, 'forma': 'Ruim'},
         'athletico pr': {'ataque': 1.4, 'defesa': 1.3, 'escanteios': 5.2, 'posse': 51, 'forma': 'Regular'},
         'cruzeiro': {'ataque': 1.5, 'defesa': 1.2, 'escanteios': 5.3, 'posse': 52, 'forma': 'Regular'},
         'vasco da gama': {'ataque': 1.4, 'defesa': 1.6, 'escanteios': 5.0, 'posse': 49, 'forma': 'Ruim'}
     }
     
-    # Limpar e normalizar nome do time
     time_clean = time.lower().strip()
     
-    # Buscar correspondência
     for time_key, stats in times_brasileiros.items():
         if time_key in time_clean:
             return stats
     
-    # Estatísticas padrão para times não encontrados
     return {'ataque': 1.5, 'defesa': 1.3, 'escanteios': 5.5, 'posse': 50, 'forma': 'Regular'}
 
 def gerar_bilhetes_reais(odds_data, esporte):
@@ -185,65 +181,58 @@ def gerar_bilhetes_reais(odds_data, esporte):
     bilhetes = []
     
     if not odds_data:
-        logger.error("❌ Nenhum dado real disponível")
+        logger.error("Nenhum dado real disponivel")
         return bilhetes
     
-    for jogo in odds_data[:8]:  # Analisar os primeiros 8 jogos REAIS
+    for jogo in odds_data[:8]:
         try:
             home_team = jogo.get('home_team', '')
             away_team = jogo.get('away_team', '')
             
-            logger.info(f"📊 Processando jogo REAL: {home_team} x {away_team}")
+            logger.info(f"Processando jogo REAL: {home_team} x {away_team}")
             
             if 'soccer' in esporte:
                 bilhetes_futebol = gerar_bilhetes_futebol_reais(jogo, home_team, away_team, esporte)
                 bilhetes.extend(bilhetes_futebol)
                 
         except Exception as e:
-            logger.error(f"❌ Erro ao processar jogo real {home_team} x {away_team}: {str(e)}")
+            logger.error(f"Erro ao processar jogo real {home_team} x {away_team}: {str(e)}")
             continue
     
-    # Ordenar por valor esperado
     bilhetes.sort(key=lambda x: x.get('valor_esperado', 0), reverse=True)
     
-    logger.info(f"🎯 Bilhetes REAIS gerados: {len(bilhetes)}")
+    logger.info(f"Bilhetes REAIS gerados: {len(bilhetes)}")
     return bilhetes
 
 def gerar_bilhetes_futebol_reais(jogo, home_team, away_team, esporte):
     """Gerar bilhetes REAIS para futebol baseado em odds reais"""
     bilhetes = []
     
-    # Buscar estatísticas REAIS dos times
     stats_home = buscar_estatisticas_reais(home_team)
     stats_away = buscar_estatisticas_reais(away_team)
     
-    # Extrair odds REAIS das casas de aposta
     odds_reais = extrair_odds_reais(jogo)
     
     if not odds_reais:
-        logger.warning(f"⚠️ Nenhuma odd real encontrada para {home_team} x {away_team}")
+        logger.warning(f"Nenhuma odd real encontrada para {home_team} x {away_team}")
         return bilhetes
     
-    # 1. BILHETE DE GOLS COM ODDS REAIS
     bilhete_gols = criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais)
     if bilhete_gols: bilhetes.append(bilhete_gols)
     
-    # 2. BILHETE DE AMBOS MARCAM COM ODDS REAIS
     bilhete_ambos_marcam = criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais)
     if bilhete_ambos_marcam: bilhetes.append(bilhete_ambos_marcam)
     
-    # 3. BILHETE DE DUPLA CHANCE COM ODDS REAIS
     bilhete_dupla_chance = criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais)
     if bilhete_dupla_chance: bilhetes.append(bilhete_dupla_chance)
     
-    # 4. BILHETE DE ESCANTEIOS
     bilhete_escanteios = criar_bilhete_escanteios_reais(jogo, stats_home, stats_away)
     if bilhete_escanteios: bilhetes.append(bilhete_escanteios)
     
     return bilhetes
 
 def extrair_odds_reais(jogo):
-    """Extrair odds REAIS das casas de aposta - VERSÃO CORRIGIDA"""
+    """Extrair odds REAIS das casas de aposta"""
     try:
         odds = {
             'home_win': 0,
@@ -257,7 +246,7 @@ def extrair_odds_reais(jogo):
         }
         
         if not jogo or 'bookmakers' not in jogo or not jogo['bookmakers']:
-            logger.warning("⚠️ Nenhum bookmaker encontrado no jogo")
+            logger.warning("Nenhum bookmaker encontrado no jogo")
             return odds
         
         for bookmaker in jogo['bookmakers']:
@@ -272,7 +261,6 @@ def extrair_odds_reais(jogo):
                     name = outcome.get('name', '')
                     price = outcome.get('price', 0)
                     
-                    # Mercado H2H
                     if market_key == 'h2h':
                         if name == jogo.get('home_team'):
                             if price > odds['home_win']:
@@ -284,7 +272,6 @@ def extrair_odds_reais(jogo):
                             if price > odds['draw']:
                                 odds['draw'] = price
                     
-                    # Mercado Totals
                     elif market_key == 'totals':
                         if 'Over' in name and '2.5' in name:
                             if price > odds['over_2.5']:
@@ -293,7 +280,6 @@ def extrair_odds_reais(jogo):
                             if price > odds['under_2.5']:
                                 odds['under_2.5'] = price
                     
-                    # Mercado Both Teams to Score
                     elif market_key == 'btts':
                         if 'Yes' in name:
                             if price > odds['both_teams_score_yes']:
@@ -302,12 +288,11 @@ def extrair_odds_reais(jogo):
                             if price > odds['both_teams_score_no']:
                                 odds['both_teams_score_no'] = price
         
-        logger.info(f"📊 Odds reais: H{odds['home_win']} E{odds['draw']} A{odds['away_win']} O2.5{odds['over_2.5']}")
+        logger.info(f"Odds reais: H{odds['home_win']} E{odds['draw']} A{odds['away_win']} O2.5{odds['over_2.5']}")
         return odds
         
     except Exception as e:
-        logger.error(f"❌ Erro ao extrair odds reais: {str(e)}")
-        # Retorna odds vazias em vez de None
+        logger.error(f"Erro ao extrair odds reais: {str(e)}")
         return {
             'home_win': 0,
             'away_win': 0,
@@ -325,12 +310,10 @@ def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
         
-        # Calcular probabilidade baseada em estatísticas REAIS
         ataque_home = stats_home.get('ataque', 1.5)
         ataque_away = stats_away.get('ataque', 1.3)
         gols_esperados = (ataque_home + ataque_away)
         
-        # Usar odds REAIS para tomar decisão
         odd_over = odds_reais.get('over_2.5', 0)
         odd_under = odds_reais.get('under_2.5', 0)
         
@@ -348,7 +331,7 @@ def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
             else:
                 return None
             
-            if valor_esperado > 0:  # Apenas se tiver valor positivo
+            if valor_esperado > 0:
                 return {
                     'tipo': 'futebol_gols_real',
                     'jogo': f"{home_team} x {away_team}",
@@ -365,7 +348,7 @@ def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
         return None
         
     except Exception as e:
-        logger.error(f"❌ Erro bilhete gols real: {str(e)}")
+        logger.error(f"Erro bilhete gols real: {str(e)}")
         return None
 
 def criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais):
@@ -379,7 +362,6 @@ def criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais):
         ataque_away = stats_away.get('ataque', 1.3)
         defesa_home = stats_home.get('defesa', 1.3)
         
-        # Probabilidade de ambos marcarem
         prob_home_marca = min(0.95, ataque_home / (defesa_away + 0.3))
         prob_away_marca = min(0.95, ataque_away / (defesa_home + 0.3))
         prob_ambos_marcam = prob_home_marca * prob_away_marca
@@ -389,7 +371,7 @@ def criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais):
         if odd_yes > 0:
             valor_esperado = calcular_valor_esperado_real(prob_ambos_marcam, odd_yes, 'btts_yes')
             
-            if valor_esperado > 0.05:  # Valor positivo
+            if valor_esperado > 0.05:
                 confianca = min(85, int(valor_esperado * 60 + 30))
                 
                 return {
@@ -408,7 +390,7 @@ def criar_bilhete_ambos_marcam_reais(jogo, stats_home, stats_away, odds_reais):
         return None
         
     except Exception as e:
-        logger.error(f"❌ Erro bilhete ambos marcam real: {str(e)}")
+        logger.error(f"Erro bilhete ambos marcam real: {str(e)}")
         return None
 
 def criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais):
@@ -417,14 +399,11 @@ def criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais):
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
         
-        # Análise baseada em estatísticas
         forca_home = stats_home.get('ataque', 1.5) - stats_away.get('defesa', 1.3)
         forca_away = stats_away.get('ataque', 1.3) - stats_home.get('defesa', 1.3)
         
-        # Time da casa é forte em casa
         if forca_home > 0.5:
             selecao = f"{home_team} ou Empate"
-            # Calcular odd aproximada para dupla chance
             odd_home = odds_reais.get('home_win', 0)
             odd_draw = odds_reais.get('draw', 0)
             if odd_home > 0 and odd_draw > 0:
@@ -442,7 +421,7 @@ def criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais):
             'mercado': 'Dupla Chance',
             'selecao': selecao,
             'odd': round(odd_dupla, 2),
-            'analise': f"Força: Casa({forca_home:.1f}) | Posse: C({stats_home['posse']}%) F({stats_away['posse']}%)",
+            'analise': f"Forca: Casa({forca_home:.1f}) | Posse: C({stats_home['posse']}%) F({stats_away['posse']}%)",
             'valor_esperado': valor_esperado,
             'confianca': confianca,
             'timestamp': datetime.now().isoformat(),
@@ -450,11 +429,11 @@ def criar_bilhete_dupla_chance_reais(jogo, stats_home, stats_away, odds_reais):
         }
         
     except Exception as e:
-        logger.error(f"❌ Erro bilhete dupla chance real: {str(e)}")
+        logger.error(f"Erro bilhete dupla chance real: {str(e)}")
         return None
 
 def criar_bilhete_escanteios_reais(jogo, stats_home, stats_away):
-    """Criar bilhete de escanteios baseado em estatísticas REAIS"""
+    """Criar bilhete de escanteios baseado em estatisticas REAIS"""
     try:
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
@@ -490,7 +469,7 @@ def criar_bilhete_escanteios_reais(jogo, stats_home, stats_away):
         }
         
     except Exception as e:
-        logger.error(f"❌ Erro bilhete escanteios real: {str(e)}")
+        logger.error(f"Erro bilhete escanteios real: {str(e)}")
         return None
 
 def calcular_valor_esperado_real(probabilidade, odd, tipo):
@@ -515,68 +494,62 @@ def gerar_bilhete_do_dia(bilhetes):
     if not bilhetes:
         return None
     
-    # Filtrar bilhetes de alta qualidade com dados reais
     bilhetes_premium = [b for b in bilhetes if b.get('confianca', 0) >= 65 and b.get('dados_reais', False)]
     
     if bilhetes_premium:
         bilhete_do_dia = max(bilhetes_premium, key=lambda x: x.get('valor_esperado', 0))
         bilhete_do_dia['destaque'] = True
-        bilhete_do_dia['analise_premium'] = "🔥 BILHETE DO DIA - Baseado em dados REAIS"
+        bilhete_do_dia['analise_premium'] = "BILHETE DO DIA - Baseado em dados REAIS"
         return bilhete_do_dia
     
     return None
 
 def enviar_bilhetes_reais_telegram(bilhetes, esporte):
-    """Enviar bilhetes REAIS para Telegram - VERSÃO CORRIGIDA"""
+    """Enviar bilhetes REAIS para Telegram - VERSAO CORRIGIDA"""
     try:
         global ULTIMO_ENVIO
         
-        # Verificar se as variáveis de ambiente estão definidas
         if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI':
-            logger.warning("❌ TELEGRAM_TOKEN não configurado corretamente")
+            logger.warning("TELEGRAM_TOKEN nao configurado corretamente")
             return False
         
         if not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == '5538926378':
-            logger.warning("❌ TELEGRAM_CHAT_ID não configurado corretamente")
+            logger.warning("TELEGRAM_CHAT_ID nao configurado corretamente")
             return False
         
-        # Evitar spam - enviar apenas a cada 5 minutos
         agora = datetime.now()
         if ULTIMO_ENVIO and (agora - ULTIMO_ENVIO).total_seconds() < 300:
-            logger.info("⏰ Envio automático ignorado (muito recente)")
+            logger.info("Envio automatico ignorado (muito recente)")
             return False
         
-        # Filtrar bilhetes com dados reais e boa confiança
         bilhetes_reais = [b for b in bilhetes if b.get('dados_reais', False) and b.get('confianca', 0) >= 60]
         
         if not bilhetes_reais:
-            logger.info("📭 Nenhum bilhete real com confiança suficiente")
+            logger.info("Nenhum bilhete real com confianca suficiente")
             return False
         
-        # Pegar os 3 melhores bilhetes
         bilhetes_enviar = bilhetes_reais[:3]
         
         esporte_nome = ESPORTES_DISPONIVEIS.get(esporte, esporte)
         
-        # Construir mensagem de forma mais segura
-        mensagem = f"⚽ *BILHETES {esporte_nome.upper()}* ⚽\n\n"
-        mensagem += "🎯 *OPORTUNIDADES IDENTIFICADAS:*\n\n"
+        mensagem = f"BILHETES {esporte_nome.upper()}\n\n"
+        mensagem += "OPORTUNIDADES IDENTIFICADAS:\n\n"
         
         for i, bilhete in enumerate(bilhetes_enviar, 1):
-            confianca_emoji = "🟢" if bilhete.get('confianca', 0) >= 75 else "🟡" if bilhete.get('confianca', 0) >= 65 else "🔴"
+            confianca_emoji = "ALTA" if bilhete.get('confianca', 0) >= 75 else "MEDIA" if bilhete.get('confianca', 0) >= 65 else "BAIXA"
             
-            mensagem += f"*{i}. {bilhete.get('jogo', 'Jogo')}*\n"
-            mensagem += f"🎯 {bilhete.get('selecao', 'Seleção')}\n"
-            mensagem += f"💰 Odd: {bilhete.get('odd', 0)}\n"
-            mensagem += f"📊 {bilhete.get('mercado', 'Mercado')}\n"
-            mensagem += f"📈 {bilhete.get('analise', 'Análise')}\n"
-            mensagem += f"⚡ Valor: {bilhete.get('valor_esperado', 0)}\n"
-            mensagem += f"{confianca_emoji} Confiança: {bilhete.get('confianca', 0)}%\n"
-            mensagem += "─" * 35 + "\n\n"
+            mensagem += f"{i}. {bilhete.get('jogo', 'Jogo')}\n"
+            mensagem += f"Selecao: {bilhete.get('selecao', 'Selecao')}\n"
+            mensagem += f"Odd: {bilhete.get('odd', 0)}\n"
+            mensagem += f"Mercado: {bilhete.get('mercado', 'Mercado')}\n"
+            mensagem += f"Analise: {bilhete.get('analise', 'Analise')}\n"
+            mensagem += f"Valor: {bilhete.get('valor_esperado', 0)}\n"
+            mensagem += f"Confianca: {bilhete.get('confianca', 0)}% ({confianca_emoji})\n"
+            mensagem += "-" * 35 + "\n\n"
         
-        mensagem += f"⏰ *Gerado em:* {agora.strftime('%d/%m/%Y %H:%M')}\n"
-        mensagem += f"📊 *Esporte:* {esporte_nome}\n"
-        mensagem += "🎯 *Sistema BetMaster AI - Dados REAIS*"
+        mensagem += f"Gerado em: {agora.strftime('%d/%m/%Y %H:%M')}\n"
+        mensagem += f"Esporte: {esporte_nome}\n"
+        mensagem += "Sistema BetMaster AI - Dados REAIS"
         
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
@@ -586,29 +559,28 @@ def enviar_bilhetes_reais_telegram(bilhetes, esporte):
             "disable_web_page_preview": True
         }
         
-        logger.info(f"📤 Tentando enviar para Telegram: {TELEGRAM_CHAT_ID}")
+        logger.info(f"Tentando enviar para Telegram: {TELEGRAM_CHAT_ID}")
         response = requests.post(url, json=payload, timeout=15)
         
         if response.status_code == 200:
             ULTIMO_ENVIO = agora
-            logger.info(f"✅ ENVIO REAL CONCLUÍDO: {len(bilhetes_enviar)} bilhetes enviados para Telegram")
+            logger.info(f"ENVIO REAL CONCLUIDO: {len(bilhetes_enviar)} bilhetes enviados para Telegram")
             return True
         else:
-            logger.error(f"❌ Erro no envio Telegram: {response.status_code} - {response.text}")
+            logger.error(f"Erro no envio Telegram: {response.status_code} - {response.text}")
             return False
             
     except Exception as e:
-        logger.error(f"❌ Erro crítico envio Telegram: {str(e)}")
+        logger.error(f"Erro critico envio Telegram: {str(e)}")
         return False
 
-# 🔥 ROTAS EXISTENTES
 @app.route('/bilhete_do_dia', methods=['GET'])
 def get_bilhete_do_dia():
-    """Endpoint específico para o bilhete do dia"""
+    """Endpoint especifico para o bilhete do dia"""
     try:
         odds_data = buscar_odds_reais('soccer_brazil_campeonato', 'br', 'h2h')
         if not odds_data:
-            return jsonify({"status": "error", "message": "Não foi possível buscar dados reais"}), 500
+            return jsonify({"status": "error", "message": "Nao foi possível buscar dados reais"}), 500
             
         bilhetes = gerar_bilhetes_reais(odds_data, 'soccer_brazil_campeonato')
         bilhete_do_dia = gerar_bilhete_do_dia(bilhetes)
@@ -628,17 +600,17 @@ def enviar_bilhete_do_dia_telegram(bilhete):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
             return False
         
-        mensagem = "🎯 *BILHETE DO DIA - BRASILEIRÃO* 🎯\n\n"
-        mensagem += "🔥 *MELHOR OPORTUNIDADE IDENTIFICADA* 🔥\n\n"
-        mensagem += f"*{bilhete['jogo']}*\n"
-        mensagem += f"🎯 {bilhete['selecao']}\n"
-        mensagem += f"💰 Odd: {bilhete['odd']}\n"
-        mensagem += f"📊 {bilhete['mercado']}\n"
-        mensagem += f"📈 {bilhete['analise']}\n"
-        mensagem += f"⚡ Valor Esperado: {bilhete['valor_esperado']}\n"
-        mensagem += f"🟢 Confiança: {bilhete['confianca']}%\n\n"
-        mensagem += f"⏰ {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-        mensagem += "📊 *BetMaster AI - Análise com dados REAIS*"
+        mensagem = "BILHETE DO DIA - BRASILEIRAO\n\n"
+        mensagem += "MELHOR OPORTUNIDADE IDENTIFICADA\n\n"
+        mensagem += f"{bilhete['jogo']}\n"
+        mensagem += f"Selecao: {bilhete['selecao']}\n"
+        mensagem += f"Odd: {bilhete['odd']}\n"
+        mensagem += f"Mercado: {bilhete['mercado']}\n"
+        mensagem += f"Analise: {bilhete['analise']}\n"
+        mensagem += f"Valor Esperado: {bilhete['valor_esperado']}\n"
+        mensagem += f"Confianca: {bilhete['confianca']}%\n\n"
+        mensagem += f"{datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+        mensagem += "BetMaster AI - Analise com dados REAIS"
         
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
@@ -651,22 +623,22 @@ def enviar_bilhete_do_dia_telegram(bilhete):
         return response.status_code == 200
         
     except Exception as e:
-        logger.error(f"❌ Erro enviar bilhete do dia: {str(e)}")
+        logger.error(f"Erro enviar bilhete do dia: {str(e)}")
         return False
 
 @app.route('/teste_bilhetes', methods=['POST'])
 def teste_bilhetes():
     """Testar envio de bilhetes para Telegram"""
     try:
-        mensagem = "🧪 *TESTE DO SISTEMA BETMASTER AI* 🧪\n\n"
-        mensagem += "✅ *Sistema operando com dados REAIS!*\n\n"
-        mensagem += "📊 *Funcionalidades ativas:*\n"
-        mensagem += "• 🇧🇷 Brasileirão e ligas internacionais\n"
-        mensagem += "• 📈 Análise de valor com odds reais\n"
-        mensagem += "• 🤖 Identificação automática de oportunidades\n"
-        mensagem += "• 🔔 Alertas automáticos no Telegram\n\n"
-        mensagem += f"⏰ Teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        mensagem += "🎯 Sistema BetMaster AI - Dados REAIS"
+        mensagem = "TESTE DO SISTEMA BETMASTER AI\n\n"
+        mensagem += "Sistema operando com dados REAIS!\n\n"
+        mensagem += "Funcionalidades ativas:\n"
+        mensagem += "- Brasileirao e ligas internacionais\n"
+        mensagem += "- Analise de valor com odds reais\n"
+        mensagem += "- Identificacao automatica de oportunidades\n"
+        mensagem += "- Alertas automaticos no Telegram\n\n"
+        mensagem += f"Teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+        mensagem += "Sistema BetMaster AI - Dados REAIS"
         
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
@@ -696,9 +668,8 @@ def teste_bilhetes():
 
 @app.route('/debug_telegram', methods=['GET'])
 def debug_telegram():
-    """Debug das configurações do Telegram"""
+    """Debug das configuracoes do Telegram"""
     try:
-        # Testar conexão com Telegram
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe"
         response = requests.get(url, timeout=10)
         
