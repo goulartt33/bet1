@@ -173,12 +173,12 @@ async def bilhete_premium():
 # -------------------------------
 
 @app.route("/teste_bilhetes", methods=["POST"])
-def teste_bilhetes():
-    return analisar_jogos()
+async def teste_bilhetes():
+    return await analisar_jogos()
 
 @app.route("/bilhete_do_dia")
-def bilhete_do_dia():
-    return bilhete_premium()
+async def bilhete_do_dia():
+    return await bilhete_premium()
 
 # -------------------------------
 # Inicialização local
