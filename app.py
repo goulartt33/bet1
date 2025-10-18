@@ -4,10 +4,13 @@ import requests
 import os
 from dotenv import load_dotenv
 from telegram import Bot
+import asyncio
+
+
 from telegram.error import TelegramError
 from datetime import datetime
 import logging
-import asyncio
+
 
 # -------------------------------
 # Configurações iniciais
@@ -28,6 +31,13 @@ if not all([TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, THE_ODDS_API_KEY]):
     raise EnvironmentError("One or more required environment variables are missing.")
 
 bot = Bot(token=TELEGRAM_TOKEN)
+
+# Criar um loop de eventos separado para o bot do Telegram
+telegram_loop = asyncio.new_event_loop()
+
+def run_telegram_coroutine(coro):
+    asyncio.set_event_loop(telegram_loop)
+    return telegram_loop.run_until_complete(coro)
 
 # -------------------------------
 # Funções auxiliares
@@ -147,7 +157,7 @@ async def analisar_jogos():
 
     # Envia para Telegram
     if mensagens:
-        executor.submit(asyncio.run, enviar_telegram("\n\n".join(mensagens)))
+                        executor.submit(run_telegram_coroutine, enviar_telegram("\n\n".join(mensagens)))
     else:
         logging.warning("Nenhum bilhete gerado para enviar ao Telegram.")
 
@@ -163,7 +173,7 @@ async def bilhete_premium():
     jogo = jogos[0]
     bilhete = gerar_bilhete(jogo)
     if bilhete:
-        executor.submit(asyncio.run, enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete))
+                        executor.submit(run_telegram_coroutine, enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete)))
         return jsonify({"bilhete": bilhete})
     else:
         return jsonify({"erro": "Erro ao gerar o bilhete premium."}), 400
