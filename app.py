@@ -19,6 +19,11 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 THE_ODDS_API_KEY = os.getenv("THE_ODDS_API_KEY")
 
+# Validate environment variables
+if not all([TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, THE_ODDS_API_KEY]):
+    logging.error("Missing required environment variables (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, or THE_ODDS_API_KEY).")
+    raise EnvironmentError("One or more required environment variables are missing.")
+
 bot = Bot(token=TELEGRAM_TOKEN)
 
 # -------------------------------
@@ -34,20 +39,33 @@ def enviar_telegram(mensagem):
 
 def buscar_odds():
     """Obtém odds reais da The Odds API (NBA)"""
-    url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?regions=us&markets=h2h,spreads,totals&apiKey={THE_ODDS_API_KEY}"
-    resp = requests.get(url)
-    if resp.status_code != 200:
-        logging.error(f"Erro API Odds: {resp.status_code} - {resp.text}")
+    if not THE_ODDS_API_KEY:
+        logging.error("THE_ODDS_API_KEY is not set.")
         return []
-    return resp.json()
+    
+    url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?regions=us&markets=h2h,spreads,totals&apiKey={THE_ODDS_API_KEY}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            logging.error(f"Erro API Odds: {resp.status_code} - {resp.text}")
+            return []
+        return resp.json()
+    except requests.RequestException as e:
+        logging.error(f"Erro na requisição à API Odds: {e}")
+        return []
 
 def buscar_ultimos_jogos(team_id):
     """Obtém últimos jogos de um time (API balldontlie)"""
     url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&per_page=5"
-    resp = requests.get(url)
-    if resp.status_code != 200:
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            logging.error(f"Erro API balldontlie: {resp.status_code} - {resp.text}")
+            return []
+        return resp.json().get("data", [])
+    except requests.RequestException as e:
+        logging.error(f"Erro na requisição à API balldontlie: {e}")
         return []
-    return resp.json().get("data", [])
 
 def gerar_bilhete(jogo):
     """Cria o bilhete com base nas odds"""
@@ -92,7 +110,7 @@ def analisar_jogos():
     jogos = buscar_odds()
 
     if not jogos:
-        return jsonify({"erro": "Não foi possível obter dados das APIs."}), 400
+        return jsonify({"erro": "Não foi possível obter dados das APIs. Verifique a chave da API ou a conexão."}), 400
 
     bilhetes = []
     mensagens = []
@@ -106,6 +124,8 @@ def analisar_jogos():
     # Envia para Telegram
     if mensagens:
         enviar_telegram("\n\n".join(mensagens))
+    else:
+        logging.warning("Nenhum bilhete gerado para enviar ao Telegram.")
 
     return jsonify({"bilhetes": bilhetes})
 
@@ -114,12 +134,15 @@ def bilhete_premium():
     """Retorna o bilhete do dia"""
     jogos = buscar_odds()
     if not jogos:
-        return jsonify({"erro": "Sem dados disponíveis."}), 400
+        return jsonify({"erro": "Sem dados disponíveis. Verifique a chave da API ou a conexão."}), 400
 
     jogo = jogos[0]
     bilhete = gerar_bilhete(jogo)
-    enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete)
-    return jsonify({"bilhete": bilhete})
+    if bilhete:
+        enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete)
+        return jsonify({"bilhete": bilhete})
+    else:
+        return jsonify({"erro": "Erro ao gerar o bilhete premium."}), 400
 
 # -------------------------------
 # Rotas compatíveis com HTML antigo
@@ -137,4 +160,4 @@ def bilhete_do_dia():
 # Inicialização local
 # -------------------------------
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=10000)
