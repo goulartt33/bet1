@@ -2,5 +2,3 @@ Flask==2.3.3
 httpx==0.26.0
 gunicorn==23.0.0
 python-dotenv==1.1.1
-python-telegram-bot==20.8
-flask-executor==0.1.3
