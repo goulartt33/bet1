@@ -243,7 +243,7 @@ def gerar_bilhetes_futebol_reais(jogo, home_team, away_team, esporte):
     return bilhetes
 
 def extrair_odds_reais(jogo):
-    """Extrair odds REAIS das casas de aposta"""
+    """Extrair odds REAIS das casas de aposta - VERSÃO CORRIGIDA"""
     try:
         odds = {
             'home_win': 0,
@@ -256,7 +256,8 @@ def extrair_odds_reais(jogo):
             'bookmakers': []
         }
         
-        if 'bookmakers' not in jogo or not jogo['bookmakers']:
+        if not jogo or 'bookmakers' not in jogo or not jogo['bookmakers']:
+            logger.warning("⚠️ Nenhum bookmaker encontrado no jogo")
             return odds
         
         for bookmaker in jogo['bookmakers']:
@@ -306,7 +307,17 @@ def extrair_odds_reais(jogo):
         
     except Exception as e:
         logger.error(f"❌ Erro ao extrair odds reais: {str(e)}")
-        return {}
+        # Retorna odds vazias em vez de None
+        return {
+            'home_win': 0,
+            'away_win': 0,
+            'draw': 0,
+            'over_2.5': 0,
+            'under_2.5': 0,
+            'both_teams_score_yes': 0,
+            'both_teams_score_no': 0,
+            'bookmakers': []
+        }
 
 def criar_bilhete_gols_reais(jogo, stats_home, stats_away, odds_reais):
     """Criar bilhete de gols com odds REAIS"""
@@ -516,18 +527,23 @@ def gerar_bilhete_do_dia(bilhetes):
     return None
 
 def enviar_bilhetes_reais_telegram(bilhetes, esporte):
-    """Enviar bilhetes REAIS para Telegram"""
+    """Enviar bilhetes REAIS para Telegram - VERSÃO CORRIGIDA"""
     try:
         global ULTIMO_ENVIO
+        
+        # Verificar se as variáveis de ambiente estão definidas
+        if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI':
+            logger.warning("❌ TELEGRAM_TOKEN não configurado corretamente")
+            return False
+        
+        if not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == '5538926378':
+            logger.warning("❌ TELEGRAM_CHAT_ID não configurado corretamente")
+            return False
         
         # Evitar spam - enviar apenas a cada 5 minutos
         agora = datetime.now()
         if ULTIMO_ENVIO and (agora - ULTIMO_ENVIO).total_seconds() < 300:
             logger.info("⏰ Envio automático ignorado (muito recente)")
-            return False
-        
-        if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-            logger.warning("❌ Telegram não configurado")
             return False
         
         # Filtrar bilhetes com dados reais e boa confiança
@@ -542,19 +558,20 @@ def enviar_bilhetes_reais_telegram(bilhetes, esporte):
         
         esporte_nome = ESPORTES_DISPONIVEIS.get(esporte, esporte)
         
+        # Construir mensagem de forma mais segura
         mensagem = f"⚽ *BILHETES {esporte_nome.upper()}* ⚽\n\n"
         mensagem += "🎯 *OPORTUNIDADES IDENTIFICADAS:*\n\n"
         
         for i, bilhete in enumerate(bilhetes_enviar, 1):
-            confianca_emoji = "🟢" if bilhete['confianca'] >= 75 else "🟡" if bilhete['confianca'] >= 65 else "🔴"
+            confianca_emoji = "🟢" if bilhete.get('confianca', 0) >= 75 else "🟡" if bilhete.get('confianca', 0) >= 65 else "🔴"
             
-            mensagem += f"*{i}. {bilhete['jogo']}*\n"
-            mensagem += f"🎯 {bilhete['selecao']}\n"
-            mensagem += f"💰 Odd: {bilhete['odd']}\n"
-            mensagem += f"📊 {bilhete['mercado']}\n"
-            mensagem += f"📈 {bilhete['analise']}\n"
-            mensagem += f"⚡ Valor: {bilhete['valor_esperado']}\n"
-            mensagem += f"{confianca_emoji} Confiança: {bilhete['confianca']}%\n"
+            mensagem += f"*{i}. {bilhete.get('jogo', 'Jogo')}*\n"
+            mensagem += f"🎯 {bilhete.get('selecao', 'Seleção')}\n"
+            mensagem += f"💰 Odd: {bilhete.get('odd', 0)}\n"
+            mensagem += f"📊 {bilhete.get('mercado', 'Mercado')}\n"
+            mensagem += f"📈 {bilhete.get('analise', 'Análise')}\n"
+            mensagem += f"⚡ Valor: {bilhete.get('valor_esperado', 0)}\n"
+            mensagem += f"{confianca_emoji} Confiança: {bilhete.get('confianca', 0)}%\n"
             mensagem += "─" * 35 + "\n\n"
         
         mensagem += f"⏰ *Gerado em:* {agora.strftime('%d/%m/%Y %H:%M')}\n"
@@ -565,21 +582,23 @@ def enviar_bilhetes_reais_telegram(bilhetes, esporte):
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,
             "text": mensagem,
-            "parse_mode": "Markdown"
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True
         }
         
-        response = requests.post(url, json=payload, timeout=10)
+        logger.info(f"📤 Tentando enviar para Telegram: {TELEGRAM_CHAT_ID}")
+        response = requests.post(url, json=payload, timeout=15)
         
         if response.status_code == 200:
             ULTIMO_ENVIO = agora
             logger.info(f"✅ ENVIO REAL CONCLUÍDO: {len(bilhetes_enviar)} bilhetes enviados para Telegram")
             return True
         else:
-            logger.error(f"❌ Erro no envio real: {response.status_code}")
+            logger.error(f"❌ Erro no envio Telegram: {response.status_code} - {response.text}")
             return False
             
     except Exception as e:
-        logger.error(f"❌ Erro envio real Telegram: {str(e)}")
+        logger.error(f"❌ Erro crítico envio Telegram: {str(e)}")
         return False
 
 # 🔥 ROTAS EXISTENTES
@@ -674,6 +693,27 @@ def teste_bilhetes():
             "status": "error", 
             "message": f"Erro interno: {str(e)}"
         }), 500
+
+@app.route('/debug_telegram', methods=['GET'])
+def debug_telegram():
+    """Debug das configurações do Telegram"""
+    try:
+        # Testar conexão com Telegram
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe"
+        response = requests.get(url, timeout=10)
+        
+        return jsonify({
+            "telegram_token_configured": bool(TELEGRAM_TOKEN),
+            "telegram_chat_id_configured": bool(TELEGRAM_CHAT_ID),
+            "telegram_bot_info": response.json() if response.status_code == 200 else f"Erro: {response.status_code}",
+            "ultimo_envio": ULTIMO_ENVIO.isoformat() if ULTIMO_ENVIO else "Nunca",
+            "variaveis_ambiente": {
+                "TELEGRAM_TOKEN_len": len(TELEGRAM_TOKEN) if TELEGRAM_TOKEN else 0,
+                "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/status', methods=['GET'])
 def status():
