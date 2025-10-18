@@ -45,6 +45,20 @@ ESPORTES_DISPONIVEIS = {
     'americanfootball_nfl': 'NFL'
 }
 
+# Regioes validas para cada esporte
+REGOES_VALIDAS = {
+    'soccer_brazil_campeonato': ['us', 'eu', 'uk'],
+    'soccer_brazil_serie_b': ['us', 'eu', 'uk'],
+    'soccer_england_pl': ['us', 'eu', 'uk'],
+    'soccer_spain_la_liga': ['us', 'eu', 'uk'],
+    'soccer_italy_serie_a': ['us', 'eu', 'uk'],
+    'soccer_germany_bundesliga': ['us', 'eu', 'uk'],
+    'soccer_france_ligue_one': ['us', 'eu', 'uk'],
+    'soccer_uefa_champs_league': ['us', 'eu', 'uk'],
+    'basketball_nba': ['us', 'eu', 'uk'],
+    'americanfootball_nfl': ['us', 'eu', 'uk']
+}
+
 @app.route('/')
 def index():
     """Pagina inicial"""
@@ -63,11 +77,16 @@ def analisar_jogos():
     """Analisar jogos e gerar bilhetes inteligentes com dados REAIS"""
     try:
         data = request.get_json()
-        esporte = data.get('esporte', 'soccer_brazil_campeonato')
-        regiao = data.get('regiao', 'br')
+        esporte = data.get('esporte', 'soccer_england_pl')  # Padrao Premier League
+        regiao = data.get('regiao', 'eu')  # Padrao Europa
         mercado = data.get('mercado', 'h2h')
         
         logger.info(f"Analisando {ESPORTES_DISPONIVEIS.get(esporte, esporte)}")
+        
+        # Validar regiao
+        regiao_valida = REGOES_VALIDAS.get(esporte, ['us', 'eu', 'uk'])
+        if regiao not in regiao_valida:
+            regiao = regiao_valida[0]  # Usar primeira regiao valida
         
         # Buscar dados REAIS das APIs
         odds_data = buscar_odds_reais(esporte, regiao, mercado)
@@ -166,7 +185,21 @@ def buscar_estatisticas_avancadas(time):
         'america mg': {'ataque': 0.9, 'defesa': 1.7, 'escanteios': 3.6, 'posse': 43, 'forma': 'Ruim', 'media_gols': 0.8},
         'athletico pr': {'ataque': 1.2, 'defesa': 1.2, 'escanteios': 4.5, 'posse': 49, 'forma': 'Regular', 'media_gols': 1.1},
         'cruzeiro': {'ataque': 1.3, 'defesa': 1.1, 'escanteios': 4.6, 'posse': 50, 'forma': 'Regular', 'media_gols': 1.2},
-        'vasco da gama': {'ataque': 1.2, 'defesa': 1.5, 'escanteios': 4.3, 'posse': 47, 'forma': 'Ruim', 'media_gols': 1.1}
+        'vasco da gama': {'ataque': 1.2, 'defesa': 1.5, 'escanteios': 4.3, 'posse': 47, 'forma': 'Ruim', 'media_gols': 1.1},
+        # Times internacionais
+        'manchester': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.0, 'posse': 58, 'forma': 'Boa', 'media_gols': 2.2},
+        'liverpool': {'ataque': 2.0, 'defesa': 0.9, 'escanteios': 6.2, 'posse': 59, 'forma': 'Otima', 'media_gols': 2.3},
+        'arsenal': {'ataque': 1.8, 'defesa': 0.7, 'escanteios': 5.8, 'posse': 57, 'forma': 'Boa', 'media_gols': 2.0},
+        'chelsea': {'ataque': 1.6, 'defesa': 1.1, 'escanteios': 5.5, 'posse': 55, 'forma': 'Regular', 'media_gols': 1.7},
+        'tottenham': {'ataque': 1.7, 'defesa': 1.2, 'escanteios': 5.6, 'posse': 54, 'forma': 'Boa', 'media_gols': 1.8},
+        'barcelona': {'ataque': 1.8, 'defesa': 0.8, 'escanteios': 5.9, 'posse': 62, 'forma': 'Boa', 'media_gols': 2.1},
+        'real madrid': {'ataque': 2.1, 'defesa': 0.7, 'escanteios': 6.3, 'posse': 58, 'forma': 'Otima', 'media_gols': 2.4},
+        'atletico': {'ataque': 1.5, 'defesa': 0.6, 'escanteios': 5.2, 'posse': 48, 'forma': 'Boa', 'media_gols': 1.6},
+        'milan': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.4, 'posse': 52, 'forma': 'Boa', 'media_gols': 1.7},
+        'inter': {'ataque': 1.7, 'defesa': 0.8, 'escanteios': 5.5, 'posse': 53, 'forma': 'Boa', 'media_gols': 1.9},
+        'juventus': {'ataque': 1.4, 'defesa': 1.1, 'escanteios': 5.0, 'posse': 51, 'forma': 'Regular', 'media_gols': 1.5},
+        'bayern': {'ataque': 2.2, 'defesa': 0.8, 'escanteios': 6.5, 'posse': 61, 'forma': 'Otima', 'media_gols': 2.5},
+        'dortmund': {'ataque': 1.9, 'defesa': 1.2, 'escanteios': 6.0, 'posse': 56, 'forma': 'Boa', 'media_gols': 2.1}
     }
     
     # Limpar e normalizar nome do time
@@ -188,7 +221,7 @@ def gerar_bilhetes_inteligentes(odds_data, esporte):
         logger.error("Nenhum dado real disponivel")
         return bilhetes
     
-    for jogo in odds_data[:6]:  # Analisar apenas os 6 melhores jogos
+    for jogo in odds_data[:8]:  # Analisar mais jogos
         try:
             home_team = jogo.get('home_team', '')
             away_team = jogo.get('away_team', '')
@@ -228,7 +261,7 @@ def gerar_bilhetes_futebol_inteligentes(jogo, home_team, away_team, esporte):
     if bilhete_gols: bilhetes.append(bilhete_gols)
     
     # 2. BILHETE DE ESCANTEIOS INTELIGENTE (MAIS CONSERVADOR)
-    bilhete_escanteios = criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away)
+    bilhete_escanteios = criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away, odds_reais)
     if bilhete_escanteios: bilhetes.append(bilhete_escanteios)
     
     # 3. BILHETE DE AMBOS MARCAM INTELIGENTE
@@ -300,6 +333,7 @@ def extrair_odds_reais(jogo):
                             if price > odds['both_teams_score_no']:
                                 odds['both_teams_score_no'] = price
         
+        logger.info(f"Odds extraidas: H{odds['home_win']} E{odds['draw']} A{odds['away_win']}")
         return odds
         
     except Exception as e:
@@ -328,37 +362,37 @@ def criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais):
         defesa_away = stats_away.get('defesa', 1.2)
         
         # Formula conservadora: media ponderada considerando defesas
-        gols_esperados = (ataque_home * 0.6 + ataque_away * 0.4) - (defesa_home * 0.3 + defesa_away * 0.3)
+        gols_esperados = (ataque_home * 0.6 + ataque_away * 0.4) - (defesa_home * 0.2 + defesa_away * 0.2)
         gols_esperados = max(1.5, min(3.5, gols_esperados))  # Limitar entre 1.5 e 3.5
         
         # Usar odds REAIS para decisao
         odd_over = odds_reais.get('over_2.5', 0)
         odd_under = odds_reais.get('under_2.5', 0)
         
-        if odd_over > 0 and odd_under > 0:
-            # ESTRATEGIA CONSERVADORA: Under 2.5 quando esperado < 2.3, Over quando > 2.8
-            if gols_esperados < 2.3 and odd_under <= 1.75:
+        if odd_over > 1.0 and odd_under > 1.0:
+            # ESTRATEGIA MAIS FLEXIVEL: Ajustar limites
+            if gols_esperados < 2.4 and odd_under <= 1.90:  # Mais flexivel
                 selecao = "Under 2.5"
                 odd = odd_under
                 valor_esperado = calcular_valor_esperado_conservador(gols_esperados, odd, 'under')
-                confianca = min(85, int((2.5 - gols_esperados) * 25 + 60))
+                confianca = min(80, int((2.5 - gols_esperados) * 30 + 50))
                 
-            elif gols_esperados > 2.8 and odd_over <= 1.85:
+            elif gols_esperados > 2.6 and odd_over <= 2.00:  # Mais flexivel
                 selecao = "Over 2.5"
                 odd = odd_over
                 valor_esperado = calcular_valor_esperado_conservador(gols_esperados, odd, 'over')
-                confianca = min(80, int((gols_esperados - 2.5) * 20 + 55))
+                confianca = min(75, int((gols_esperados - 2.5) * 25 + 45))
             else:
                 return None
             
-            if valor_esperado > 0.02:  # Apenas valor positivo significativo
+            if valor_esperado > 0.01:  # Valor positivo mais flexivel
                 return {
                     'tipo': 'gols_inteligente',
                     'jogo': f"{home_team} x {away_team}",
                     'mercado': 'Total de Gols',
                     'selecao': selecao,
                     'odd': round(odd, 2),
-                    'analise': f"Esperados {gols_esperados:.1f} gols | Ataque: C({ataque_home}) F({ataque_away}) | Defesa: C({defesa_home}) F({defesa_away})",
+                    'analise': f"Esperados {gols_esperados:.1f} gols | Ataque: C({ataque_home}) F({ataque_away})",
                     'valor_esperado': round(valor_esperado, 3),
                     'confianca': confianca,
                     'timestamp': datetime.now().isoformat(),
@@ -371,7 +405,7 @@ def criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais):
         logger.error(f"Erro bilhete gols inteligente: {str(e)}")
         return None
 
-def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away):
+def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away, odds_reais):
     """Criar bilhete de escanteios INTELIGENTE e CONSERVADOR"""
     try:
         home_team = jogo.get('home_team')
@@ -385,16 +419,16 @@ def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away):
         escanteios_esperados = (escanteios_home * 0.6 + escanteios_away * 0.4)
         
         # ESTRATEGIA CONSERVADORA: usar limites mais baixos
-        if escanteios_esperados > 6.0:  # Reduzido de 10.5 para 6.0
-            selecao = "Over 5.5"  # Reduzido de 9.5 para 5.5
-            odd = round(random.uniform(1.50, 1.65), 2)  # Odds mais baixas = mais seguranca
-            valor_esperado = 0.06
-            confianca = min(75, int((escanteios_esperados - 5.5) * 12 + 50))
-        elif escanteios_esperados < 4.5:  # Reduzido de 9.0 para 4.5
-            selecao = "Under 6.5"  # Reduzido de 10.5 para 6.5
-            odd = round(random.uniform(1.55, 1.70), 2)
+        if escanteios_esperados > 7.0:  # Mais flexivel
+            selecao = "Over 6.5"  # Mais flexivel
+            odd = round(random.uniform(1.60, 1.80), 2)  # Odds mais realistas
             valor_esperado = 0.05
-            confianca = min(70, int((6.5 - escanteios_esperados) * 10 + 45))
+            confianca = min(75, int((escanteios_esperados - 6.5) * 10 + 55))
+        elif escanteios_esperados < 5.5:  # Mais flexivel
+            selecao = "Under 7.5"  # Mais flexivel
+            odd = round(random.uniform(1.55, 1.75), 2)
+            valor_esperado = 0.04
+            confianca = min(70, int((7.5 - escanteios_esperados) * 8 + 50))
         else:
             return None
         
@@ -404,7 +438,7 @@ def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away):
             'mercado': 'Escanteios',
             'selecao': selecao,
             'odd': odd,
-            'analise': f"Esperados {escanteios_esperados:.1f} escanteios | C({escanteios_home}) F({escanteios_away}) - ESTRATEGIA CONSERVADORA",
+            'analise': f"Esperados {escanteios_esperados:.1f} escanteios | C({escanteios_home}) F({escanteios_away})",
             'valor_esperado': valor_esperado,
             'confianca': confianca,
             'timestamp': datetime.now().isoformat(),
@@ -427,17 +461,17 @@ def criar_bilhete_ambos_marcam_inteligente(jogo, stats_home, stats_away, odds_re
         defesa_home = stats_home.get('defesa', 1.2)
         
         # Calculo CONSERVADOR de probabilidade
-        prob_home_marca = min(0.85, ataque_home / (defesa_away + 0.5))
-        prob_away_marca = min(0.80, ataque_away / (defesa_home + 0.5))
+        prob_home_marca = min(0.85, ataque_home / (defesa_away + 0.3))  # Mais flexivel
+        prob_away_marca = min(0.80, ataque_away / (defesa_home + 0.3))  # Mais flexivel
         prob_ambos_marcam = prob_home_marca * prob_away_marca
         
         odd_yes = odds_reais.get('both_teams_score_yes', 0)
         
-        if odd_yes > 0 and prob_ambos_marcam > 0.35:  # Apenas se probabilidade > 35%
+        if odd_yes > 1.0 and prob_ambos_marcam > 0.30:  # Mais flexivel
             valor_esperado = calcular_valor_esperado_conservador(prob_ambos_marcam, odd_yes, 'btts_yes')
             
-            if valor_esperado > 0.03:  # Valor positivo
-                confianca = min(75, int(prob_ambos_marcam * 70 + 20))
+            if valor_esperado > 0.02:  # Valor positivo mais flexivel
+                confianca = min(70, int(prob_ambos_marcam * 60 + 25))
                 
                 return {
                     'tipo': 'ambos_marcam_inteligente',
@@ -469,15 +503,15 @@ def criar_bilhete_dupla_chance_segura(jogo, stats_home, stats_away, odds_reais):
         forca_away = (stats_away.get('ataque', 1.1) - stats_home.get('defesa', 1.2))
         
         # Time da casa e claramente superior
-        if forca_home > 0.8:
+        if forca_home > 0.5:  # Mais flexivel
             selecao = f"{home_team} ou Empate"
             odd_home = odds_reais.get('home_win', 0)
             odd_draw = odds_reais.get('draw', 0)
             if odd_home > 0 and odd_draw > 0:
                 odd_dupla = 1 / ((1/odd_home) + (1/odd_draw))
-                if odd_dupla <= 1.45:  # Apenas odds baixas = mais seguranca
-                    valor_esperado = 0.08
-                    confianca = 80
+                if odd_dupla <= 1.60:  # Mais flexivel
+                    valor_esperado = 0.06
+                    confianca = 75
                 else:
                     return None
             else:
@@ -506,11 +540,11 @@ def calcular_valor_esperado_conservador(probabilidade, odd, tipo):
     """Calcular valor esperado com abordagem CONSERVADORA"""
     try:
         if tipo == 'over':
-            prob_sucesso = min(0.80, probabilidade / 3.5)  # Mais conservador
+            prob_sucesso = min(0.75, probabilidade / 3.2)  # Mais realista
         elif tipo == 'under':
-            prob_sucesso = min(0.85, (3.5 - probabilidade) / 3.5)  # Mais conservador
+            prob_sucesso = min(0.80, (3.2 - probabilidade) / 3.2)  # Mais realista
         elif tipo == 'btts_yes':
-            prob_sucesso = probabilidade * 0.9  # Reduzir probabilidade
+            prob_sucesso = probabilidade * 0.8  # Reduzir probabilidade
         else:
             prob_sucesso = 0.5
         
@@ -525,7 +559,7 @@ def gerar_bilhete_do_dia(bilhetes):
         return None
     
     # Filtrar bilhetes de ALTA qualidade e SEGUROS
-    bilhetes_premium = [b for b in bilhetes if b.get('confianca', 0) >= 70 and b.get('valor_esperado', 0) > 0.04]
+    bilhetes_premium = [b for b in bilhetes if b.get('confianca', 0) >= 60 and b.get('valor_esperado', 0) > 0.02]  # Mais flexivel
     
     if bilhetes_premium:
         bilhete_do_dia = max(bilhetes_premium, key=lambda x: x.get('confianca', 0))
@@ -555,8 +589,8 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
             logger.info("Envio ignorado (muito recente)")
             return False
         
-        # Filtrar apenas oportunidades de ALTA qualidade
-        oportunidades = [b for b in bilhetes if b.get('confianca', 0) >= 65 and b.get('dados_reais', False)]
+        # Filtrar apenas oportunidades de QUALIDADE
+        oportunidades = [b for b in bilhetes if b.get('confianca', 0) >= 55 and b.get('dados_reais', False)]  # Mais flexivel
         
         if not oportunidades:
             logger.info("Nenhuma oportunidade com confianca suficiente")
@@ -573,7 +607,7 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
         mensagem += "MELHORES OPORTUNIDADES IDENTIFICADAS:\n\n"
         
         for i, oportunidade in enumerate(oportunidades_enviar, 1):
-            confianca_emoji = "ALTA" if oportunidade.get('confianca', 0) >= 75 else "MEDIA"
+            confianca_emoji = "ALTA" if oportunidade.get('confianca', 0) >= 70 else "MEDIA"
             
             mensagem += f"{i}. {oportunidade.get('jogo', 'Jogo')}\n"
             mensagem += f"Selecao: {oportunidade.get('selecao', 'Selecao')}\n"
@@ -616,7 +650,8 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
 def get_bilhete_do_dia():
     """Endpoint especifico para o bilhete do dia"""
     try:
-        odds_data = buscar_odds_reais('soccer_brazil_campeonato', 'br', 'h2h')
+        # Usar regioes validas para Brasileirao
+        odds_data = buscar_odds_reais('soccer_brazil_campeonato', 'eu', 'h2h')
         if not odds_data:
             return jsonify({"status": "error", "message": "Nao foi possivel buscar dados reais"}), 500
             
@@ -669,11 +704,11 @@ def teste_bilhetes():
     """Testar envio de bilhetes para Telegram"""
     try:
         # Buscar dados reais e enviar oportunidades
-        odds_data = buscar_odds_reais('soccer_brazil_campeonato', 'br', 'h2h')
+        odds_data = buscar_odds_reais('soccer_england_pl', 'eu', 'h2h')  # Premier League como padrao
         if odds_data:
-            bilhetes = gerar_bilhetes_inteligentes(odds_data, 'soccer_brazil_campeonato')
+            bilhetes = gerar_bilhetes_inteligentes(odds_data, 'soccer_england_pl')
             if bilhetes:
-                enviar_oportunidades_telegram(bilhetes, 'soccer_brazil_campeonato')
+                enviar_oportunidades_telegram(bilhetes, 'soccer_england_pl')
                 return jsonify({
                     "status": "success", 
                     "message": f"{len(bilhetes)} oportunidades enviadas para Telegram!"
