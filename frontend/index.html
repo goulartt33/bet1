@@ -133,3 +133,138 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BetMaster PRO - Sistema Profissional de Apostas</title>
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        header {
+            background: #111;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 1px;
+            color: #00ff88;
+        }
+
+        main {
+            margin-top: 40px;
+            padding: 20px;
+        }
+
+        button {
+            background: #00ff88;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            color: #111;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #00cc6a;
+            transform: scale(1.05);
+        }
+
+        .resultado {
+            margin-top: 40px;
+            background: #1c1c1c;
+            padding: 25px;
+            border-radius: 15px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 0 10px rgba(0,255,136,0.3);
+        }
+
+        .jogo {
+            background: #2b2b2b;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .conf {
+            color: #00ff88;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding: 20px;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🏆 BetMaster PRO</h1>
+    </header>
+
+    <main>
+        <h2>🔍 Buscar Bilhete do Dia</h2>
+        <form id="form-bilhete" action="/bilhete_do_dia" method="post">
+            <button type="submit">Gerar Bilhete</button>
+        </form>
+
+        <div class="resultado" id="resultado" style="display:none;">
+            <h3>Bilhete do Dia 🎯</h3>
+            <div id="jogos"></div>
+            <div class="conf" id="confianca"></div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 BetMaster PRO — Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        document.getElementById("form-bilhete").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const res = await fetch("/bilhete_do_dia", { method: "POST" });
+            const data = await res.json();
+
+            const resultado = document.getElementById("resultado");
+            const jogosDiv = document.getElementById("jogos");
+            const confianca = document.getElementById("confianca");
+
+            if (data.status === "sucesso") {
+                resultado.style.display = "block";
+                jogosDiv.innerHTML = "";
+                data.bilhete.jogos.forEach(jogo => {
+                    jogosDiv.innerHTML += `
+                        <div class="jogo">
+                            <strong>${jogo.partida}</strong><br>
+                            ${jogo.mercado} @ ${jogo.odd}
+                        </div>
+                    `;
+                });
+                confianca.textContent = `🔥 Confiança: ${data.bilhete.confiança}`;
+            } else {
+                resultado.style.display = "block";
+                jogosDiv.innerHTML = `<p style="color: red;">Erro ao gerar bilhete: ${data.error || "Erro desconhecido"}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
