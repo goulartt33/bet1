@@ -5,101 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bet Analyzer - Sistema Profissional</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gray-900 text-white">
     <div class="container mx-auto px-4 py-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-green-500 mb-2">🎯 Bet Analyzer</h1>
-            <p class="text-gray-400">Sistema profissional de análise de apostas</p>
+            <h1 class="text-4xl font-bold text-green-500 mb-2">
+                <i class="fas fa-chart-line"></i> Bet Analyzer Pro
+            </h1>
+            <p class="text-gray-400">Análise multi-mercado com inteligência artificial</p>
         </header>
 
         <!-- Status do Sistema -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-gray-800 p-4 rounded-lg text-center">
-                <div class="text-2xl mb-2">🤖</div>
-                <h3 class="font-semibold">Bot Telegram</h3>
-                <div id="botStatus" class="text-yellow-400">Verificando...</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-lg">🤖 Bot Telegram</h3>
+                        <div class="text-green-400">{{ '✅ Online' if bot_status else '❌ Offline' }}</div>
+                    </div>
+                    <div class="text-right text-sm text-gray-400">
+                        Chat ID: {{ chat_id }}
+                    </div>
+                </div>
             </div>
-            <div class="bg-gray-800 p-4 rounded-lg text-center">
-                <div class="text-2xl mb-2">💬</div>
-                <h3 class="font-semibold">Chat ID</h3>
-                <div id="chatStatus" class="text-yellow-400">Verificando...</div>
-            </div>
-            <div class="bg-gray-800 p-4 rounded-lg text-center">
-                <div class="text-2xl mb-2">⚡</div>
-                <h3 class="font-semibold">Sistema</h3>
-                <div class="text-green-400">Online</div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold text-lg">⚡ Sistema</h3>
+                <div class="text-green-400">Operacional</div>
+                <div class="text-sm text-gray-400">Análise em tempo real</div>
             </div>
         </div>
 
         <!-- Controles -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <button onclick="analisarJogos()" class="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-semibold transition duration-200">
-                🔍 Analisar Jogos
+            <button onclick="analisarJogos()" class="bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                <i class="fas fa-search mr-2"></i> Analisar Jogos
             </button>
-            <button onclick="testarSistema()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition duration-200">
-                🧪 Testar Sistema
+            <button onclick="testarSistema()" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                <i class="fas fa-test-tube mr-2"></i> Testar Sistema
             </button>
         </div>
 
         <!-- Resultados -->
-        <div id="resultado" class="bg-gray-800 p-6 rounded-lg hidden">
-            <h3 class="text-xl font-semibold mb-4">📊 Resultado da Análise</h3>
-            <div id="resultadoContent" class="text-gray-300"></div>
+        <div id="resultado" class="hidden">
+            <div class="bg-gray-800 p-6 rounded-lg mb-4">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i> Resultado da Análise
+                </h3>
+                <div id="resultadoContent"></div>
+            </div>
+
+            <!-- Jogos Analisados -->
+            <div id="jogosContainer" class="grid grid-cols-1 gap-4"></div>
         </div>
 
-        <!-- Informações do Sistema -->
+        <!-- Informações -->
         <div class="mt-8 bg-gray-800 p-6 rounded-lg">
-            <h3 class="text-xl font-semibold mb-4">🔧 Informações do Sistema</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <strong>Chat ID:</strong> <span id="infoChatId">{{ chat_id }}</span>
+            <h3 class="text-xl font-semibold mb-4">
+                <i class="fas fa-info-circle mr-2"></i> Mercados Analisados
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-center">
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-trophy text-yellow-400 text-lg mb-2"></i>
+                    <div>Vitórias</div>
                 </div>
-                <div>
-                    <strong>Bot Status:</strong> 
-                    <span id="infoBotStatus" class="{{ 'text-green-400' if bot_status else 'text-red-400' }}">
-                        {{ '✅ Online' if bot_status else '❌ Offline' }}
-                    </span>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-flag text-blue-400 text-lg mb-2"></i>
+                    <div>Escanteios</div>
                 </div>
-                <div>
-                    <strong>Chat Status:</strong> 
-                    <span id="infoChatStatus" class="{{ 'text-green-400' if chat_status else 'text-red-400' }}">
-                        {{ '✅ Válido' if chat_status else '❌ Inválido' }}
-                    </span>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-card text-yellow-300 text-lg mb-2"></i>
+                    <div>Cartões</div>
                 </div>
-                <div>
-                    <strong>URL:</strong> https://bet1-xwgi.onrender.com
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-futbol text-green-400 text-lg mb-2"></i>
+                    <div>Finalizações</div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-exchange-alt text-purple-400 text-lg mb-2"></i>
+                    <div>Ambos Marcam</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Atualizar status na inicialização
-        async function atualizarStatus() {
-            try {
-                const response = await fetch('/status');
-                const data = await response.json();
-                
-                document.getElementById('botStatus').textContent = 
-                    data.telegram_bot.online ? '✅ Online' : '❌ Offline';
-                document.getElementById('botStatus').className = 
-                    data.telegram_bot.online ? 'text-green-400' : 'text-red-400';
-                
-                document.getElementById('chatStatus').textContent = 
-                    data.telegram_chat.valid ? '✅ Válido' : '❌ Inválido';
-                document.getElementById('chatStatus').className = 
-                    data.telegram_chat.valid ? 'text-green-400' : 'text-red-400';
-            } catch (error) {
-                console.error('Erro ao atualizar status:', error);
-            }
-        }
-
         // Analisar jogos
         async function analisarJogos() {
             const button = event.target;
-            const originalText = button.textContent;
-            button.textContent = '⏳ Analisando...';
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analisando...';
             button.disabled = true;
 
             try {
@@ -118,7 +113,7 @@
                     mensagem: 'Erro na conexão: ' + error.message
                 });
             } finally {
-                button.textContent = originalText;
+                button.innerHTML = originalText;
                 button.disabled = false;
             }
         }
@@ -126,8 +121,8 @@
         // Testar sistema
         async function testarSistema() {
             const button = event.target;
-            const originalText = button.textContent;
-            button.textContent = '⏳ Testando...';
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Testando...';
             button.disabled = true;
 
             try {
@@ -146,7 +141,7 @@
                     mensagem: 'Erro no teste: ' + error.message
                 });
             } finally {
-                button.textContent = originalText;
+                button.innerHTML = originalText;
                 button.disabled = false;
             }
         }
@@ -155,41 +150,91 @@
         function mostrarResultado(data) {
             const resultadoDiv = document.getElementById('resultado');
             const contentDiv = document.getElementById('resultadoContent');
+            const jogosContainer = document.getElementById('jogosContainer');
             
             resultadoDiv.classList.remove('hidden');
             
+            // Mensagem de status
             if (data.status === 'success') {
                 contentDiv.innerHTML = `
                     <div class="bg-green-900 text-green-200 p-4 rounded mb-4">
-                        <strong>✅ Sucesso!</strong> ${data.mensagem}
-                        ${data.tempo_analise ? `<br><small>Tempo: ${data.tempo_analise}</small>` : ''}
-                        ${data.jogos_analisados ? `<br><small>Jogos analisados: ${data.jogos_analisados}</small>` : ''}
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <strong>✅ Análise Concluída!</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
+                        <div class="text-sm mt-2">
+                            <i class="fas fa-clock mr-1"></i> Tempo: ${data.tempo_analise} | 
+                            <i class="fas fa-chart-bar mr-1 ml-2"></i> Jogos: ${data.jogos_analisados} |
+                            <i class="fas fa-paper-plane mr-1 ml-2"></i> Telegram: ${data.telegram_enviado ? '✅' : '❌'}
+                        </div>
                     </div>
                 `;
             } else if (data.status === 'warning') {
                 contentDiv.innerHTML = `
                     <div class="bg-yellow-900 text-yellow-200 p-4 rounded mb-4">
-                        <strong>⚠️ Atenção!</strong> ${data.mensagem}
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>⚠️ Atenção!</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
                     </div>
                 `;
             } else {
                 contentDiv.innerHTML = `
                     <div class="bg-red-900 text-red-200 p-4 rounded mb-4">
-                        <strong>❌ Erro!</strong> ${data.mensagem}
+                        <div class="flex items-center">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            <strong>❌ Erro!</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
                     </div>
                 `;
             }
-            
-            // Atualizar status após ação
-            atualizarStatus();
-        }
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', function() {
-            atualizarStatus();
-            // Atualizar status a cada 30 segundos
-            setInterval(atualizarStatus, 30000);
-        });
+            // Mostrar jogos analisados se disponíveis
+            if (data.jogos && data.jogos.length > 0) {
+                jogosContainer.innerHTML = '';
+                
+                data.jogos.forEach((jogo, index) => {
+                    const jogoCard = document.createElement('div');
+                    jogoCard.className = 'bg-gray-700 p-4 rounded-lg';
+                    
+                    let statusBadge = '';
+                    if (jogo.status === 'LIVE') {
+                        statusBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-sm ml-2">AO VIVO</span>';
+                    } else if (jogo.status === 'IN_PLAY') {
+                        statusBadge = '<span class="bg-yellow-500 text-white px-2 py-1 rounded text-sm ml-2">EM ANDAMENTO</span>';
+                    }
+                    
+                    jogoCard.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-lg">⚽ Jogo ${index + 1}: ${jogo.time1} vs ${jogo.time2}</h4>
+                            ${statusBadge}
+                        </div>
+                        <div class="space-y-2">
+                            ${jogo.analises.map(analise => `
+                                <div class="bg-gray-600 p-3 rounded">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <strong>${analise.mercado}</strong>
+                                            <div class="text-sm">${analise.aposta}</div>
+                                            <div class="text-xs text-gray-300 mt-1">${analise.detalhes}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-green-400 font-semibold">${analise.confianca}</div>
+                                            <div class="text-yellow-400">Odds: ${analise.odds}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    jogosContainer.appendChild(jogoCard);
+                });
+            }
+        }
     </script>
 </body>
 </html>
