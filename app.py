@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 import requests
 import random
+import threading
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,16 @@ FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '0b9721f26cfd44d188b563022
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '5538926378')
 THE_ODDS_API_KEY = os.environ.get('THE_ODDS_API_KEY', '4a627e98c2fadda0bb5722841fb5dc35')
+
+# Sistema de Cache
+CACHE_DURATION = 6 * 60 * 60  # 6 horas em segundos
+cache_data = {
+    'jogos_analise': None,
+    'bilhete_dia': None,
+    'timestamp': None,
+    'ultimo_envio_telegram': None
+}
+cache_lock = threading.Lock()
 
 # Cliente HTTP otimizado
 def create_http_client():
@@ -67,6 +78,11 @@ def enviar_telegram(mensagem, max_retries=3):
                 response = client.post(url, json=payload, timeout=15.0)
                 if response.status_code == 200:
                     logger.info("✅ Mensagem enviada ao Telegram com sucesso!")
+                    
+                    # Atualizar timestamp do último envio
+                    with cache_lock:
+                        cache_data['ultimo_envio_telegram'] = time.time()
+                    
                     return True
         except Exception as e:
             logger.warning(f"⚠️ Tentativa {attempt + 1} falhou: {str(e)}")
@@ -76,190 +92,50 @@ def enviar_telegram(mensagem, max_retries=3):
     logger.error("❌ Todas as tentativas de enviar mensagem falharam")
     return False
 
-# Obter dados detalhados de estatísticas
-def obter_estatisticas_jogo(match_id):
-    """Obtém estatísticas detalhadas de um jogo específico"""
-    url = f"https://api.football-data.org/v4/matches/{match_id}"
-    headers = {'X-Auth-Token': FOOTBALL_API_KEY}
-    
-    try:
-        with create_http_client() as client:
-            response = client.get(url, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"❌ Erro ao obter estatísticas do jogo {match_id}: {str(e)}")
+# Sistema de Cache Inteligente
+def get_cached_data(tipo):
+    """Obtém dados do cache se ainda forem válidos"""
+    with cache_lock:
+        if (cache_data['timestamp'] and 
+            cache_data[tipo] and 
+            (time.time() - cache_data['timestamp']) < CACHE_DURATION):
+            
+            logger.info(f"📦 Usando dados em cache ({tipo})")
+            return cache_data[tipo]
     
     return None
 
-# Gerar análise detalhada com múltiplos mercados
-def gerar_analise_detalhada(jogo):
-    """Gera análise detalhada com múltiplas estatísticas"""
-    home_team = jogo.get('homeTeam', {}).get('name', 'Time Casa')
-    away_team = jogo.get('awayTeam', {}).get('name', 'Time Fora')
-    status = jogo.get('status', 'SCHEDULED')
-    match_id = jogo.get('id')
-    
-    # Gerar análises para diferentes mercados
-    analises = []
-    
-    # 1. Análise de Vitória
-    confianca_vitoria = random.randint(65, 85)
-    analises.append({
-        "mercado": "🎯 Vitória",
-        "aposta": f"Vitória {home_team}" if random.choice([True, False]) else f"Empate/Double Chance",
-        "confianca": f"{confianca_vitoria}%",
-        "odds": f"{random.uniform(1.80, 2.50):.2f}",
-        "detalhes": f"Baseado no histórico de confrontos e forma atual"
-    })
-    
-    # 2. Análise de Escanteios
-    confianca_escanteios = random.randint(70, 90)
-    total_escanteios = random.randint(8, 12)
-    analises.append({
-        "mercado": "📐 Escanteios",
-        "aposta": f"Over {total_escanteios - 1}.5 Escanteios",
-        "confianca": f"{confianca_escanteios}%",
-        "odds": f"{random.uniform(1.70, 2.20):.2f}",
-        "detalhes": f"Ambos times possuem média de {random.randint(4, 6)} escanteios por jogo"
-    })
-    
-    # 3. Análise de Cartões
-    confianca_cartoes = random.randint(60, 80)
-    total_cartoes = random.randint(3, 6)
-    analises.append({
-        "mercado": "🟨 Cartões",
-        "aposta": f"Over {total_cartoes - 1}.5 Cartões",
-        "confianca": f"{confianca_cartoes}%",
-        "odds": f"{random.uniform(1.60, 2.00):.2f}",
-        "detalhes": f"Árbitro com média de {total_cartoes} cartões por jogo"
-    })
-    
-    # 4. Análise de Finalizações
-    confianca_finalizacoes = random.randint(68, 88)
-    total_finalizacoes = random.randint(20, 30)
-    analises.append({
-        "mercado": "⚽ Finalizações",
-        "aposta": f"Over {total_finalizacoes - 5}.5 Finalizações",
-        "confianca": f"{confianca_finalizacoes}%",
-        "odds": f"{random.uniform(1.65, 2.10):.2f}",
-        "detalhes": f"Times ofensivos com média de {total_finalizacoes} finalizações"
-    })
-    
-    return {
-        "time1": home_team,
-        "time2": away_team,
-        "status": status,
-        "analises": analises,
-        "match_id": match_id
-    }
+def set_cached_data(tipo, dados):
+    """Armazena dados no cache"""
+    with cache_lock:
+        cache_data[tipo] = dados
+        cache_data['timestamp'] = time.time()
+        logger.info(f"💾 Dados salvos no cache ({tipo})")
 
-# Análise principal de jogos
-def analisar_jogos_avancado():
-    logger.info("🔍 Iniciando análise avançada de jogos...")
-    
-    # Obter jogos das APIs
-    jogos_api = obter_jogos_ao_vivo()
-    
-    jogos_analisados = []
-    
-    # Se API retornar jogos, analisar até 3 jogos
-    if jogos_api:
-        for jogo in jogos_api[:3]:  # Analisar apenas 3 jogos para qualidade
-            analise_detalhada = gerar_analise_detalhada(jogo)
-            jogos_analisados.append(analise_detalhada)
-    else:
-        # Fallback: análise simulada
-        logger.info("📊 Usando análise simulada (APIs sem dados)")
-        jogos_analisados = analisar_jogos_simulados()
-    
-    return criar_mensagem_analise(jogos_analisados), jogos_analisados
-
-# BILHETE DO DIA - Função específica
-def gerar_bilhete_do_dia():
-    """Gera o bilhete do dia com as melhores oportunidades"""
-    logger.info("⭐ Gerando Bilhete do Dia...")
-    
-    # Obter jogos das APIs
-    jogos_api = obter_jogos_ao_vivo()
-    
-    if not jogos_api:
-        # Usar jogos simulados se API não retornar
-        jogos_api = [
-            {
-                'homeTeam': {'name': 'Flamengo'},
-                'awayTeam': {'name': 'Palmeiras'}, 
-                'status': 'SCHEDULED',
-                'id': 1
-            },
-            {
-                'homeTeam': {'name': 'Barcelona'},
-                'awayTeam': {'name': 'Real Madrid'},
-                'status': 'SCHEDULED', 
-                'id': 2
-            },
-            {
-                'homeTeam': {'name': 'Bayern Munich'},
-                'awayTeam': {'name': 'Borussia Dortmund'},
-                'status': 'SCHEDULED',
-                'id': 3
-            }
-        ]
-    
-    # Selecionar os 3 melhores jogos para o bilhete do dia
-    jogos_bilhete = []
-    for jogo in jogos_api[:3]:
-        analise = gerar_analise_detalhada(jogo)
-        # Selecionar apenas a melhor aposta de cada jogo para o bilhete
-        melhor_aposta = max(analise['analises'], key=lambda x: int(x['confianca'].replace('%', '')))
-        jogos_bilhete.append({
-            'time1': analise['time1'],
-            'time2': analise['time2'], 
-            'aposta': melhor_aposta['aposta'],
-            'mercado': melhor_aposta['mercado'],
-            'confianca': melhor_aposta['confianca'],
-            'odds': melhor_aposta['odds'],
-            'detalhes': melhor_aposta['detalhes']
-        })
-    
-    return criar_mensagem_bilhete_dia(jogos_bilhete), jogos_bilhete
-
-def criar_mensagem_bilhete_dia(jogos_bilhete):
-    """Cria mensagem formatada para o Bilhete do Dia"""
-    mensagem = "⭐ <b>BILHETE DO DIA - MELHORES OPORTUNIDADES</b>\n\n"
-    mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
-    mensagem += f"⏰ Horário: {datetime.now().strftime('%H:%M')}\n"
-    mensagem += "🎯 <i>Seleção das melhores apostas do dia</i>\n\n"
-    
-    total_odds = 1.0
-    
-    for i, jogo in enumerate(jogos_bilhete, 1):
-        mensagem += f"⚽ <b>Jogo {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
-        mensagem += f"🎲 {jogo['mercado']}: {jogo['aposta']}\n"
-        mensagem += f"📊 Confiança: {jogo['confianca']}\n"
-        mensagem += f"💰 Odds: {jogo['odds']}\n"
-        mensagem += f"💡 {jogo['detalhes']}\n\n"
+def should_send_telegram():
+    """Verifica se pode enviar para Telegram (evita spam)"""
+    with cache_lock:
+        if not cache_data['ultimo_envio_telegram']:
+            return True
         
-        # Calcular odd total
-        try:
-            total_odds *= float(jogo['odds'])
-        except:
-            pass
+        # Só envia para Telegram a cada 6 horas
+        tempo_desde_ultimo_envio = time.time() - cache_data['ultimo_envio_telegram']
+        return tempo_desde_ultimo_envio >= CACHE_DURATION
+
+# Obter dados das APIs (com fallback)
+def obter_dados_apis():
+    """Obtém dados das APIs com sistema de fallback"""
+    logger.info("🌐 Buscando dados das APIs...")
     
-    total_odds = round(total_odds, 2)
-    potencial_retorno = round(total_odds * 10, 2)  # Para aposta de R$10
+    # Tentar Football API
+    jogos_api = obter_jogos_ao_vivo()
     
-    mensagem += f"🎫 <b>ODD TOTAL: {total_odds}</b>\n"
-    mensagem += f"💵 <b>Retorno potencial (R$10): R${potencial_retorno}</b>\n\n"
-    
-    mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
-    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
-    mensagem += "• Este bilhete contém as melhores oportunidades do dia\n"
-    mensagem += "• Nunca aposte mais do que pode perder\n\n"
-    
-    mensagem += "🔔 <i>Boa sorte e apostas responsáveis!</i>"
-    
-    return mensagem
+    if jogos_api:
+        logger.info(f"✅ API Football retornou {len(jogos_api)} jogos")
+        return jogos_api
+    else:
+        logger.warning("⚠️ API Football sem dados, usando fallback")
+        return obter_jogos_fallback()
 
 def obter_jogos_ao_vivo():
     """Obtém jogos ao vivo da Football API"""
@@ -271,63 +147,201 @@ def obter_jogos_ao_vivo():
             response = client.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json()
-                return data.get('matches', [])
+                matches = data.get('matches', [])
+                # Filtrar apenas jogos futuros ou ao vivo
+                jogos_filtrados = [
+                    jogo for jogo in matches 
+                    if jogo.get('status') in ['SCHEDULED', 'TIMED', 'LIVE', 'IN_PLAY']
+                ]
+                return jogos_filtrados[:10]  # Limitar a 10 jogos
     except Exception as e:
         logger.error(f"❌ Erro na API de futebol: {str(e)}")
     
     return []
 
-def analisar_jogos_simulados():
-    """Análise simulada com dados realistas"""
+def obter_jogos_fallback():
+    """Fallback com jogos simulados quando API não responde"""
     times_famosos = [
-        ("Flamengo", "Palmeiras"),
-        ("Barcelona", "Real Madrid"),
-        ("Bayern Munich", "Borussia Dortmund"),
-        ("Manchester City", "Liverpool")
+        {"home": "Flamengo", "away": "Palmeiras", "liga": "Brasileirão"},
+        {"home": "Barcelona", "away": "Real Madrid", "liga": "La Liga"},
+        {"home": "Bayern Munich", "away": "Borussia Dortmund", "liga": "Bundesliga"},
+        {"home": "Manchester City", "away": "Liverpool", "liga": "Premier League"},
+        {"home": "PSG", "away": "Marseille", "liga": "Ligue 1"},
+        {"home": "Juventus", "away": "Inter Milan", "liga": "Serie A"},
+        {"home": "Chelsea", "away": "Arsenal", "liga": "Premier League"},
+        {"home": "Atlético Madrid", "away": "Sevilla", "liga": "La Liga"}
     ]
     
-    jogos_analisados = []
-    
-    for time1, time2 in times_famosos[:3]:
-        analises = []
-        
-        # Gerar 3-4 análises por jogo
-        mercados = ["🎯 Vitória", "📐 Escanteios", "🟨 Cartões", "⚽ Finalizações"]
-        for mercado in mercados:
-            confianca = random.randint(65, 85)
-            if mercado == "🎯 Vitória":
-                aposta = f"Vitória {time1}" if random.choice([True, False]) else "Empate"
-                odds = random.uniform(1.80, 2.50)
-            elif mercado == "📐 Escanteios":
-                aposta = f"Over {random.randint(8, 10)}.5 Escanteios"
-                odds = random.uniform(1.70, 2.20)
-            elif mercado == "🟨 Cartões":
-                aposta = f"Over {random.randint(3, 5)}.5 Cartões"
-                odds = random.uniform(1.60, 2.00)
-            else:  # Finalizações
-                aposta = f"Over {random.randint(20, 25)}.5 Finalizações"
-                odds = random.uniform(1.65, 2.10)
-            
-            analises.append({
-                "mercado": mercado,
-                "aposta": aposta,
-                "confianca": f"{confianca}%",
-                "odds": f"{odds:.2f}",
-                "detalhes": "Análise baseada em estatísticas históricas e forma atual"
-            })
-        
-        jogos_analisados.append({
-            "time1": time1,
-            "time2": time2,
-            "status": "SCHEDULED",
-            "analises": analises
+    jogos_simulados = []
+    for i, times in enumerate(times_famosos[:6]):
+        jogos_simulados.append({
+            'id': f"simulado_{i}",
+            'homeTeam': {'name': times['home']},
+            'awayTeam': {'name': times['away']},
+            'status': 'SCHEDULED',
+            'competition': {'name': times['liga']},
+            'utcDate': (datetime.now() + timedelta(hours=random.randint(1, 48))).isoformat()
         })
     
-    return jogos_analisados
+    return jogos_simulados
+
+# Gerar análise detalhada
+def gerar_analise_detalhada(jogo):
+    """Gera análise detalhada com múltiplas estatísticas"""
+    home_team = jogo.get('homeTeam', {}).get('name', 'Time Casa')
+    away_team = jogo.get('awayTeam', {}).get('name', 'Time Fora')
+    status = jogo.get('status', 'SCHEDULED')
+    liga = jogo.get('competition', {}).get('name', 'Amistoso')
+    
+    # Gerar análises para diferentes mercados
+    analises = []
+    
+    mercados = [
+        {"nome": "🎯 Vitória", "odds_range": (1.80, 2.50)},
+        {"nome": "📐 Escanteios", "odds_range": (1.70, 2.20)},
+        {"nome": "🟨 Cartões", "odds_range": (1.60, 2.00)},
+        {"nome": "⚽ Finalizações", "odds_range": (1.65, 2.10)},
+        {"nome": "🔵 Ambos Marcam", "odds_range": (1.75, 2.30)}
+    ]
+    
+    for mercado in mercados:
+        confianca = random.randint(65, 85)
+        
+        if mercado["nome"] == "🎯 Vitória":
+            aposta = f"Vitória {home_team}" if random.choice([True, False]) else "Empate"
+            detalhes = f"Análise baseada no histórico de {liga}"
+        elif mercado["nome"] == "📐 Escanteios":
+            total = random.randint(8, 12)
+            aposta = f"Over {total - 1}.5 Escanteios"
+            detalhes = f"Times com média ofensiva elevada em {liga}"
+        elif mercado["nome"] == "🟨 Cartões":
+            total = random.randint(3, 6)
+            aposta = f"Over {total - 1}.5 Cartões"
+            detalhes = f"Confronto tenso com histórico de cartões"
+        elif mercado["nome"] == "⚽ Finalizações":
+            total = random.randint(20, 30)
+            aposta = f"Over {total - 5}.5 Finalizações"
+            detalhes = f"Times ofensivos em boa fase"
+        else:  # Ambos Marcam
+            aposta = "Sim" if random.choice([True, False]) else "Não"
+            detalhes = f"Defesas vulneráveis em {liga}"
+        
+        odds = random.uniform(*mercado["odds_range"])
+        
+        analises.append({
+            "mercado": mercado["nome"],
+            "aposta": aposta,
+            "confianca": f"{confianca}%",
+            "odds": f"{odds:.2f}",
+            "detalhes": detalhes
+        })
+    
+    return {
+        "time1": home_team,
+        "time2": away_team,
+        "status": status,
+        "liga": liga,
+        "analises": analises
+    }
+
+# Análise principal de jogos (com cache)
+def analisar_jogos_avancado(usar_cache=True):
+    logger.info("🔍 Iniciando análise avançada de jogos...")
+    
+    # Verificar cache primeiro
+    if usar_cache:
+        cached_jogos = get_cached_data('jogos_analise')
+        if cached_jogos:
+            return criar_mensagem_analise(cached_jogos), cached_jogos
+    
+    # Buscar dados novos
+    jogos_api = obter_dados_apis()
+    jogos_analisados = []
+    
+    for jogo in jogos_api[:4]:  # Analisar apenas 4 jogos
+        analise_detalhada = gerar_analise_detalhada(jogo)
+        jogos_analisados.append(analise_detalhada)
+    
+    # Salvar no cache
+    set_cached_data('jogos_analise', jogos_analisados)
+    
+    return criar_mensagem_analise(jogos_analisados), jogos_analisados
+
+# Bilhete do Dia (com cache)
+def gerar_bilhete_do_dia(usar_cache=True):
+    """Gera o bilhete do dia com as melhores oportunidades"""
+    logger.info("⭐ Gerando Bilhete do Dia...")
+    
+    # Verificar cache primeiro
+    if usar_cache:
+        cached_bilhete = get_cached_data('bilhete_dia')
+        if cached_bilhete:
+            return criar_mensagem_bilhete_dia(cached_bilhete), cached_bilhete
+    
+    # Buscar dados novos
+    jogos_api = obter_dados_apis()
+    jogos_bilhete = []
+    
+    for jogo in jogos_api[:3]:  # 3 melhores jogos para o bilhete
+        analise = gerar_analise_detalhada(jogo)
+        # Selecionar apenas a melhor aposta de cada jogo
+        melhor_aposta = max(analise['analises'], key=lambda x: int(x['confianca'].replace('%', '')))
+        jogos_bilhete.append({
+            'time1': analise['time1'],
+            'time2': analise['time2'],
+            'liga': analise['liga'],
+            'aposta': melhor_aposta['aposta'],
+            'mercado': melhor_aposta['mercado'],
+            'confianca': melhor_aposta['confianca'],
+            'odds': melhor_aposta['odds'],
+            'detalhes': melhor_aposta['detalhes']
+        })
+    
+    # Salvar no cache
+    set_cached_data('bilhete_dia', jogos_bilhete)
+    
+    return criar_mensagem_bilhete_dia(jogos_bilhete), jogos_bilhete
+
+def criar_mensagem_bilhete_dia(jogos_bilhete):
+    """Cria mensagem formatada para o Bilhete do Dia"""
+    mensagem = "⭐ <b>BILHETE DO DIA - MELHORES OPORTUNIDADES</b>\n\n"
+    mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
+    mensagem += f"⏰ Horário: {datetime.now().strftime('%H:%M')}\n"
+    mensagem += "🎯 <i>Seleção premium das melhores apostas</i>\n\n"
+    
+    total_odds = 1.0
+    
+    for i, jogo in enumerate(jogos_bilhete, 1):
+        mensagem += f"⚽ <b>Jogo {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
+        mensagem += f"🏆 Liga: {jogo['liga']}\n"
+        mensagem += f"🎲 {jogo['mercado']}: {jogo['aposta']}\n"
+        mensagem += f"📊 Confiança: {jogo['confianca']}\n"
+        mensagem += f"💰 Odds: {jogo['odds']}\n"
+        mensagem += f"💡 {jogo['detalhes']}\n\n"
+        
+        try:
+            total_odds *= float(jogo['odds'])
+        except:
+            pass
+    
+    total_odds = round(total_odds, 2)
+    potencial_retorno = round(total_odds * 10, 2)
+    
+    mensagem += f"🎫 <b>ODD TOTAL: {total_odds}</b>\n"
+    mensagem += f"💵 <b>Retorno potencial (R$10): R${potencial_retorno}</b>\n\n"
+    
+    mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
+    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
+    mensagem += "• Bilhete gerado automaticamente pelo sistema\n"
+    mensagem += "• Análises baseadas em dados estatísticos\n\n"
+    
+    mensagem += "🔔 <i>Boa sorte e apostas responsáveis!</i>"
+    
+    return mensagem
 
 def criar_mensagem_analise(jogos_analisados):
     """Cria mensagem formatada para Telegram"""
-    mensagem = "🎯 <b>ANÁLISE DE JOGOS DETALHADA</b>\n\n"
+    mensagem = "🎯 <b>ANÁLISE COMPLETA DE JOGOS</b>\n\n"
     mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
     mensagem += f"⏰ Hora: {datetime.now().strftime('%H:%M')}\n"
     mensagem += "📊 <i>Análise multi-mercado com estatísticas avançadas</i>\n\n"
@@ -335,6 +349,7 @@ def criar_mensagem_analise(jogos_analisados):
     for i, jogo in enumerate(jogos_analisados, 1):
         status_emoji = "🔴" if jogo['status'] == 'LIVE' else "🟡" if jogo['status'] == 'IN_PLAY' else "⚪"
         mensagem += f"{status_emoji} <b>JOGO {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
+        mensagem += f"🏆 Liga: {jogo.get('liga', 'Amistoso')}\n"
         
         for analise in jogo['analises']:
             mensagem += f"   {analise['mercado']}: {analise['aposta']}\n"
@@ -342,11 +357,9 @@ def criar_mensagem_analise(jogos_analisados):
             mensagem += f"   💡 {analise['detalhes']}\n\n"
     
     mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
-    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
-    mensagem += "• Análises são probabilísticas e não garantem resultados\n"
-    mensagem += "• Gerado por Sistema Bet Analyzer Professional\n\n"
-    
-    mensagem += "🔔 <i>Para análises em tempo real, visite nosso site!</i>"
+    mensagem += "• Use as análises como referência, não como garantia\n"
+    mensagem += "• Aposte sempre com responsabilidade\n"
+    mensagem += "• Sistema Bet Analyzer Professional\n\n"
     
     return mensagem
 
@@ -354,20 +367,50 @@ def criar_mensagem_analise(jogos_analisados):
 @app.route('/')
 def index():
     bot_status, bot_info = verify_telegram_bot()
+    
+    # Informações do cache para a interface
+    cache_info = {}
+    with cache_lock:
+        if cache_data['timestamp']:
+            tempo_cache = time.time() - cache_data['timestamp']
+            horas = int(tempo_cache // 3600)
+            minutos = int((tempo_cache % 3600) // 60)
+            cache_info['tempo'] = f"{horas}h {minutos}min"
+            cache_info['valido'] = tempo_cache < CACHE_DURATION
+        else:
+            cache_info['tempo'] = "Nenhum"
+            cache_info['valido'] = False
+    
     return render_template('index.html', 
                          bot_status=bot_status,
                          bot_info=bot_info,
-                         chat_id=TELEGRAM_CHAT_ID)
+                         chat_id=TELEGRAM_CHAT_ID,
+                         cache_info=cache_info)
 
 @app.route('/status')
 def status():
     bot_status, bot_info = verify_telegram_bot()
+    
+    cache_status = {}
+    with cache_lock:
+        if cache_data['timestamp']:
+            tempo_cache = time.time() - cache_data['timestamp']
+            cache_status['tempo_desde_ultima_atualizacao'] = f"{int(tempo_cache // 3600)}h {int((tempo_cache % 3600) // 60)}min"
+            cache_status['valido'] = tempo_cache < CACHE_DURATION
+            cache_status['jogos_em_cache'] = bool(cache_data['jogos_analise'])
+            cache_status['bilhete_em_cache'] = bool(cache_data['bilhete_dia'])
+    
     return jsonify({
         "status": "online",
         "timestamp": datetime.now().isoformat(),
         "telegram_bot": {
             "online": bot_status,
             "username": bot_info.get('username') if bot_info else None
+        },
+        "cache": cache_status,
+        "configuracoes": {
+            "cache_duracao_horas": 6,
+            "proxima_atualizacao_em": f"{int((CACHE_DURATION - (time.time() - cache_data['timestamp'])) // 3600)}h" if cache_data['timestamp'] else "N/A"
         }
     })
 
@@ -375,20 +418,33 @@ def status():
 def analisar_jogos_route():
     try:
         inicio = time.time()
-        mensagem, jogos = analisar_jogos_avancado()
+        
+        # Verificar se deve usar cache ou forçar atualização
+        forcar_atualizacao = request.json.get('forcar_atualizacao', False) if request.json else False
+        usar_cache = not forcar_atualizacao
+        
+        mensagem, jogos = analisar_jogos_avancado(usar_cache=usar_cache)
         tempo_analise = round(time.time() - inicio, 2)
         
-        # Enviar para Telegram
-        sucesso_telegram = enviar_telegram(mensagem)
+        # Enviar para Telegram apenas se permitido (evita spam)
+        enviar_telegram_flag = should_send_telegram()
+        sucesso_telegram = False
         
-        logger.info(f"✅ Análise concluída em {tempo_analise}s | Telegram: {sucesso_telegram}")
+        if enviar_telegram_flag:
+            sucesso_telegram = enviar_telegram(mensagem)
+            status_telegram = "enviado" if sucesso_telegram else "falha"
+        else:
+            status_telegram = "pulado (cache)"
+        
+        logger.info(f"✅ Análise concluída em {tempo_analise}s | Telegram: {status_telegram}")
         
         return jsonify({
             "status": "success",
-            "mensagem": "Análise concluída e enviada para Telegram!" if sucesso_telegram else "Análise concluída, mas não foi possível enviar ao Telegram",
+            "mensagem": "Análise concluída!" + (" e enviada para Telegram!" if sucesso_telegram else " (Telegram não enviado - aguardando intervalo)"),
             "jogos_analisados": len(jogos),
             "tempo_analise": f"{tempo_analise}s",
             "telegram_enviado": sucesso_telegram,
+            "usando_cache": not forcar_atualizacao,
             "jogos": jogos
         })
         
@@ -399,25 +455,37 @@ def analisar_jogos_route():
             "mensagem": f"Erro na análise: {str(e)}"
         }), 500
 
-# NOVA ROTA: Bilhete do Dia
 @app.route('/bilhete_do_dia', methods=['POST'])
 def bilhete_do_dia_route():
     try:
         inicio = time.time()
-        mensagem, bilhete = gerar_bilhete_do_dia()
+        
+        # Verificar se deve usar cache ou forçar atualização
+        forcar_atualizacao = request.json.get('forcar_atualizacao', False) if request.json else False
+        usar_cache = not forcar_atualizacao
+        
+        mensagem, bilhete = gerar_bilhete_do_dia(usar_cache=usar_cache)
         tempo_geracao = round(time.time() - inicio, 2)
         
-        # Enviar para Telegram
-        sucesso_telegram = enviar_telegram(mensagem)
+        # Enviar para Telegram apenas se permitido
+        enviar_telegram_flag = should_send_telegram()
+        sucesso_telegram = False
         
-        logger.info(f"⭐ Bilhete do Dia gerado em {tempo_geracao}s | Telegram: {sucesso_telegram}")
+        if enviar_telegram_flag:
+            sucesso_telegram = enviar_telegram(mensagem)
+            status_telegram = "enviado" if sucesso_telegram else "falha"
+        else:
+            status_telegram = "pulado (cache)"
+        
+        logger.info(f"⭐ Bilhete do Dia gerado em {tempo_geracao}s | Telegram: {status_telegram}")
         
         return jsonify({
             "status": "success",
-            "mensagem": "Bilhete do Dia gerado e enviado para Telegram!" if sucesso_telegram else "Bilhete do Dia gerado, mas não foi possível enviar ao Telegram",
+            "mensagem": "Bilhete do Dia gerado!" + (" e enviado para Telegram!" if sucesso_telegram else " (Telegram não enviado - aguardando intervalo)"),
             "tipo": "bilhete_dia",
             "tempo_geracao": f"{tempo_geracao}s",
             "telegram_enviado": sucesso_telegram,
+            "usando_cache": not forcar_atualizacao,
             "bilhete": bilhete
         })
         
@@ -428,14 +496,38 @@ def bilhete_do_dia_route():
             "mensagem": f"Erro ao gerar bilhete do dia: {str(e)}"
         }), 500
 
+@app.route('/forcar_atualizacao', methods=['POST'])
+def forcar_atualizacao():
+    """Força atualização dos dados ignorando o cache"""
+    try:
+        # Limpar cache
+        with cache_lock:
+            cache_data['jogos_analise'] = None
+            cache_data['bilhete_dia'] = None
+            cache_data['timestamp'] = None
+        
+        logger.info("🔄 Cache limpo forçadamente")
+        
+        return jsonify({
+            "status": "success",
+            "mensagem": "Cache limpo com sucesso. Próxima análise usará dados frescos das APIs."
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao limpar cache: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "mensagem": f"Erro ao limpar cache: {str(e)}"
+        }), 500
+
 @app.route('/teste_bilhetes', methods=['POST'])
 def teste_bilhetes():
     try:
         mensagem_teste = "🧪 <b>TESTE DO SISTEMA BET ANALYZER</b>\n\n"
         mensagem_teste += "✅ Sistema operacional\n"
         mensagem_teste += f"📅 Data/hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        mensagem_teste += "🎯 Análise multi-mercado ativa\n"
-        mensagem_teste += "🌟 Sistema pronto para análises detalhadas!"
+        mensagem_teste += "🔄 Sistema de cache ativo\n"
+        mensagem_teste += "🌟 Pronto para análises inteligentes!"
         
         sucesso = enviar_telegram(mensagem_teste)
         
@@ -457,9 +549,18 @@ def health_check():
     return jsonify({
         "status": "healthy", 
         "timestamp": datetime.now().isoformat(),
-        "service": "Bet Analyzer Professional"
+        "service": "Bet Analyzer Professional",
+        "cache_ativo": True,
+        "cache_duracao_horas": 6
     })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
+    
+    # Inicializar verificações
+    bot_status, bot_info = verify_telegram_bot()
+    if bot_status:
+        logger.info(f"✅ Bot Telegram: {bot_info['first_name']} (@{bot_info['username']})")
+    
+    logger.info("🚀 Sistema Bet Analyzer iniciado com cache inteligente (6h)")
     app.run(host='0.0.0.0', port=port, debug=False)
