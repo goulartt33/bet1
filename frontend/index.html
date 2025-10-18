@@ -579,13 +579,13 @@
                 const data = await response.json();
                 
                     if (response.ok) {
-                        todosBilhetes = data.bilhetes;
+                        todosBilhetes = data.bilhetes || [];
                         exibirBilhetes(todosBilhetes);
                         atualizarEstatisticas(todosBilhetes);
                         
-                        // Atualizar bilhete do dia se existir
-                        if (data.bilhete_do_dia) {
-                            exibirBilheteDoDia(data.bilhete_do_dia);
+                        // Se houver um bilhete premium retornado dentro de analisar_jogos, exibe-o
+                        if (data.bilhete_premium) {
+                            exibirBilheteDoDia(data.bilhete_premium);
                         }
                 } else {
                     resultadosContainer.innerHTML = `
@@ -629,10 +629,9 @@
                 });
                 
                 const data = await response.json();
-                
-                if (response.ok) {
+                               if (response.ok && data.bilhete) {
                     exibirBilheteDoDia(data.bilhete);
-                    alert('✅ Bilhete do dia encontrado e enviado para o Telegram!');
+                    alert(\'✅ Bilhete do dia encontrado e enviado para o Telegram!\');
                 } else {
                     bilheteDiaContainer.innerHTML = `
                         <div class="empty-state">
@@ -811,7 +810,7 @@
                 if (response.ok) {
                     alert('✅ Bilhetes de teste enviados para o Telegram!');
                 } else {
-                    alert('❌ Erro ao enviar: ' + (data.erro || 'Erro desconhecido'));
+                    alert(\'❌ Erro ao enviar: \' + (data.erro || \'Erro desconhecido\'));
                 }
                 
             } catch (error) {
