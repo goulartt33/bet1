@@ -990,15 +990,15 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    todosBilhetes = data.data.bilhetes;
+                    todosBilhetes = data.data.bilhetes || [];
                     exibirBilhetes(todosBilhetes);
                     atualizarEstatisticas(todosBilhetes);
                     
-                    if (data.data.bilhete_premium) {
-                        exibirBilhetePremium(data.data.bilhete_premium);
+                    if (data.data.bilhete_do_dia) {
+                        exibirBilhetePremium(data.data.bilhete_do_dia);
                     }
 
-                    mostrarMensagemSucesso(`✅ ${data.data.total_filtrados}/${data.data.total_analisados} bilhetes premium - Modo ${modoAtual.toUpperCase()}`);
+                    mostrarMensagemSucesso(`✅ ${todosBilhetes.length} bilhetes gerados - Modo ${modoAtual.toUpperCase()}`);
                 } else {
                     resultadosContainer.innerHTML = `
                         <div class="empty-state">
@@ -1009,10 +1009,12 @@
                 }
                 
             } catch (error) {
+                console.error('Erro:', error);
                 resultadosContainer.innerHTML = `
                     <div class="empty-state">
                         <h3>❌ Erro de Conexão</h3>
                         <p>Verifique sua conexão e tente novamente.</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">Detalhes: ${error.message}</p>
                     </div>
                 `;
             } finally {
@@ -1054,9 +1056,309 @@
                 const response = await fetch('/bilhete_do_dia');
                 const data = await response.json();
                 
-                if (data.status === 'success') {
+                if (data.status === 'success' && data.bilhete_do_dia) {
                     exibirBilhetePremium(data.bilhete_do_dia);
                     mostrarMensagemSucesso('🏆 Bilhete premium encontrado e enviado para Telegram!');
                 } else {
                     premiumContainer.innerHTML = `
-                        <
+                        <div class="empty-state">
+                            <h3>❌ Nenhum bilhete premium</h3>
+                            <p>${data.message || 'Tente novamente mais tarde'}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                premiumContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Erro de Conexão</h3>
+                        <p>Verifique sua conexão e tente novamente.</p>
+                    </div>
+                `;
+            } finally {
+                premiumBtn.disabled = false;
+                premiumBtn.innerHTML = '🏆 Buscar Bilhete Premium';
+            }
+        }
+
+        function exibirBilhetes(bilhetes) {
+            const resultadosContainer = document.getElementById('resultadosContainer');
+            const badgeCount = document.getElementById('badgeCount');
+            
+            if (!bilhetes || bilhetes.length === 0) {
+                resultadosContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📭 Nenhum bilhete encontrado</h3>
+                        <p>Tente ajustar os filtros ou selecionar outro esporte/mercado</p>
+                    </div>
+                `;
+                badgeCount.textContent = '0';
+                return;
+            }
+            
+            badgeCount.textContent = bilhetes.length;
+            
+            const bilhetesHTML = bilhetes.map((bilhete, index) => {
+                const isDestaque = bilhete.destaque || bilhete.confianca >= 80;
+                const isReal = bilhete.dados_reais;
+                const confiancaClass = bilhete.confianca >= 75 ? 'confianca-alta' : 
+                                     bilhete.confianca >= 65 ? 'confianca-media' : 'confianca-baixa';
+                
+                return `
+                    <div class="bilhete-item ${isDestaque ? 'bilhete-destaque' : isReal ? 'bilhete-real' : 'bilhete-profissional'}">
+                        ${isDestaque ? '<div class="score-avancado">🏆 PREMIUM</div>' : ''}
+                        
+                        <div class="bilhete-header">
+                            <div class="jogo-info">${bilhete.jogo || 'Jogo não especificado'}</div>
+                            <div class="bilhete-tipo ${isDestaque ? 'tipo-destaque' : isReal ? 'tipo-real' : 'tipo-profissional'}">
+                                ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_', ' ').toUpperCase() : 'BILHETE'}
+                            </div>
+                        </div>
+                        
+                        <div class="bilhete-detalhes">
+                            <div class="detalhes-esquerda">
+                                <div class="mercado">${bilhete.mercado || 'Mercado'}</div>
+                                <div class="selecao">${bilhete.selecao || 'Seleção'}</div>
+                                <div class="analise ${isDestaque ? 'analise-premium' : isReal ? 'analise-real' : 'analise-profissional'}">
+                                    ${bilhete.analise || 'Análise baseada em dados estatísticos'}
+                                </div>
+                                ${bilhete.analise_premium ? `
+                                    <div class="analise-premium">${bilhete.analise_premium}</div>
+                                ` : ''}
+                                <div class="estrategia">
+                                    ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_real', '') : 'Estratégia'} 
+                                    | Valor: ${bilhete.valor_esperado || '0.000'}
+                                </div>
+                            </div>
+                            
+                            <div class="detalhes-direita">
+                                <div class="odd ${isDestaque ? 'odd-destaque' : isReal ? 'odd-real' : 'odd-profissional'}">
+                                    ${bilhete.odd ? bilhete.odd.toFixed(2) : '0.00'}
+                                </div>
+                                <div class="valor-esperado">
+                                    Valor: ${bilhete.valor_esperado ? bilhete.valor_esperado.toFixed(3) : '0.000'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bilhete-footer">
+                            <div class="confianca">
+                                <span>Confiança:</span>
+                                <div class="barra-confianca">
+                                    <div class="preenchimento-confianca ${confiancaClass}" 
+                                         style="width: ${bilhete.confianca || 50}%"></div>
+                                </div>
+                                <span>${bilhete.confianca || 50}%</span>
+                            </div>
+                            <div class="timestamp">
+                                ${new Date(bilhete.timestamp || new Date()).toLocaleString('pt-BR')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            resultadosContainer.innerHTML = bilhetesHTML;
+        }
+
+        function exibirBilhetePremium(bilhete) {
+            const premiumContainer = document.getElementById('bilhetePremiumContainer');
+            
+            if (!bilhete) {
+                premiumContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Nenhum bilhete premium</h3>
+                        <p>Tente novamente mais tarde</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const confiancaClass = bilhete.confianca >= 75 ? 'confianca-alta' : 
+                                 bilhete.confianca >= 65 ? 'confianca-media' : 'confianca-baixa';
+            
+            premiumContainer.innerHTML = `
+                <div class="bilhete-item bilhete-destaque">
+                    <div class="score-avancado">🏆 BILHETE DO DIA</div>
+                    
+                    <div class="bilhete-header">
+                        <div class="jogo-info">${bilhete.jogo}</div>
+                        <div class="bilhete-tipo tipo-destaque">PREMIUM</div>
+                    </div>
+                    
+                    <div class="bilhete-detalhes">
+                        <div class="detalhes-esquerda">
+                            <div class="mercado">${bilhete.mercado}</div>
+                            <div class="selecao">${bilhete.selecao}</div>
+                            <div class="analise analise-premium">
+                                ${bilhete.analise}
+                            </div>
+                            ${bilhete.analise_premium ? `
+                                <div class="analise-premium">${bilhete.analise_premium}</div>
+                            ` : ''}
+                            <div class="estrategia">
+                                ${bilhete.tipo ? bilhete.tipo.replace('futebol_', '').replace('_real', '') : 'Estratégia'} 
+                                | Valor: ${bilhete.valor_esperado.toFixed(3)}
+                            </div>
+                        </div>
+                        
+                        <div class="detalhes-direita">
+                            <div class="odd odd-destaque">
+                                ${bilhete.odd.toFixed(2)}
+                            </div>
+                            <div class="valor-esperado">
+                                Valor: ${bilhete.valor_esperado.toFixed(3)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bilhete-footer">
+                        <div class="confianca">
+                            <span>Confiança:</span>
+                            <div class="barra-confianca">
+                                <div class="preenchimento-confianca ${confiancaClass}" 
+                                     style="width: ${bilhete.confianca}%"></div>
+                            </div>
+                            <span>${bilhete.confianca}%</span>
+                        </div>
+                        <div class="timestamp">
+                            ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function filtrarBilhetes(filtro) {
+            filtroAtual = filtro;
+            
+            // Atualizar tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            let bilhetesFiltrados = [];
+            
+            switch(filtro) {
+                case 'todos':
+                    bilhetesFiltrados = todosBilhetes;
+                    break;
+                case 'premium':
+                    bilhetesFiltrados = todosBilhetes.filter(b => b.destaque || b.confianca >= 80);
+                    break;
+                case 'alta':
+                    bilhetesFiltrados = todosBilhetes.filter(b => b.confianca >= 70);
+                    break;
+                case 'profissional':
+                    bilhetesFiltrados = todosBilhetes.filter(b => b.tipo && b.tipo.includes('profissional'));
+                    break;
+                case 'gols':
+                    bilhetesFiltrados = todosBilhetes.filter(b => b.mercado && b.mercado.includes('Gols'));
+                    break;
+            }
+            
+            exibirBilhetes(bilhetesFiltrados);
+        }
+
+        function atualizarEstatisticas(bilhetes) {
+            const totalBilhetes = document.getElementById('totalBilhetes');
+            const altaConfianca = document.getElementById('altaConfianca');
+            const valorMedio = document.getElementById('valorMedio');
+            const taxaSucesso = document.getElementById('taxaSucesso');
+            
+            totalBilhetes.textContent = bilhetes.length;
+            
+            const altaConf = bilhetes.filter(b => b.confianca >= 70).length;
+            altaConfianca.textContent = altaConf;
+            
+            const valores = bilhetes.map(b => b.valor_esperado || 0).filter(v => v > 0);
+            const valorMedioCalc = valores.length > 0 ? 
+                (valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(3) : '0.000';
+            valorMedio.textContent = valorMedioCalc;
+            
+            // Taxa de sucesso baseada na confiança média
+            const confiancaMedia = bilhetes.length > 0 ? 
+                bilhetes.reduce((sum, b) => sum + (b.confianca || 50), 0) / bilhetes.length : 0;
+            taxaSucesso.textContent = Math.min(85, Math.max(65, Math.round(confiancaMedia * 0.8))) + '%';
+        }
+
+        async function testarSistema() {
+            const testeBtn = document.getElementById('testeBtn');
+            testeBtn.disabled = true;
+            testeBtn.innerHTML = '🧪 Testando...';
+            
+            try {
+                const response = await fetch('/teste_bilhetes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    mostrarMensagemSucesso('✅ ' + data.message);
+                } else {
+                    mostrarMensagemErro('❌ ' + (data.message || 'Erro no teste'));
+                }
+                
+            } catch (error) {
+                mostrarMensagemErro('❌ Erro de conexão: ' + error.message);
+            } finally {
+                testeBtn.disabled = false;
+                testeBtn.innerHTML = '🧪 Testar Sistema';
+            }
+        }
+
+        function mostrarMensagemSucesso(mensagem) {
+            // Criar alerta temporário
+            const alerta = document.createElement('div');
+            alerta.className = 'info-alerta success';
+            alerta.innerHTML = `<strong>${mensagem}</strong>`;
+            alerta.style.marginTop = '20px';
+            alerta.style.animation = 'fadeIn 0.5s';
+            
+            document.querySelector('.container').insertBefore(alerta, document.querySelector('.info-alerta.success'));
+            
+            // Remover após 5 segundos
+            setTimeout(() => {
+                alerta.remove();
+            }, 5000);
+        }
+
+        function mostrarMensagemErro(mensagem) {
+            const alerta = document.createElement('div');
+            alerta.className = 'info-alerta';
+            alerta.style.background = '#f8d7da';
+            alerta.style.borderColor = '#f5c6cb';
+            alerta.style.color = '#721c24';
+            alerta.innerHTML = `<strong>${mensagem}</strong>`;
+            alerta.style.marginTop = '20px';
+            
+            document.querySelector('.container').insertBefore(alerta, document.querySelector('.info-alerta.success'));
+            
+            setTimeout(() => {
+                alerta.remove();
+            }, 5000);
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Testar conexão inicial
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'online') {
+                        console.log('✅ Sistema conectado:', data);
+                    }
+                })
+                .catch(error => {
+                    console.warn('⚠️ Sistema offline:', error);
+                });
+        });
+    </script>
+</body>
+</html>
