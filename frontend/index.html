@@ -1,465 +1,329 @@
-import asyncio
-import httpx
-import logging
-from flask import Flask, request, jsonify, render_template
-import time
-import os
-import json
-from datetime import datetime, timedelta
-import requests
-import random
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bet Analyzer - Sistema Profissional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-green-500 mb-2">
+                <i class="fas fa-chart-line"></i> Bet Analyzer Pro
+            </h1>
+            <p class="text-gray-400">Análise multi-mercado com inteligência artificial</p>
+        </header>
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+        <!-- Status do Sistema -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-lg">🤖 Bot Telegram</h3>
+                        <div class="text-green-400">{{ '✅ Online' if bot_status else '❌ Offline' }}</div>
+                    </div>
+                    <div class="text-right text-sm text-gray-400">
+                        Chat ID: {{ chat_id }}
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold text-lg">⚡ Sistema</h3>
+                <div class="text-green-400">Operacional</div>
+                <div class="text-sm text-gray-400">Análise em tempo real</div>
+            </div>
+        </div>
 
-app = Flask(__name__)
+        <!-- Controles PRINCIPAIS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <button onclick="analisarJogos()" class="bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                <i class="fas fa-search mr-2"></i> Analisar Jogos
+            </button>
+            <button onclick="gerarBilheteDia()" class="bg-yellow-600 hover:bg-yellow-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                <i class="fas fa-star mr-2"></i> Bilhete do Dia
+            </button>
+            <button onclick="testarSistema()" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                <i class="fas fa-test-tube mr-2"></i> Testar Sistema
+            </button>
+        </div>
 
-# Configurações das APIs
-FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY', '0b9721f26cfd44d188b5630223a1d1ac')
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '5538926378')
-THE_ODDS_API_KEY = os.environ.get('THE_ODDS_API_KEY', '4a627e98c2fadda0bb5722841fb5dc35')
+        <!-- Resultados -->
+        <div id="resultado" class="hidden">
+            <div class="bg-gray-800 p-6 rounded-lg mb-4">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i> Resultado da Análise
+                </h3>
+                <div id="resultadoContent"></div>
+            </div>
 
-# Cliente HTTP otimizado
-def create_http_client():
-    return httpx.Client(
-        timeout=30.0,
-        headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json'
-        }
-    )
+            <!-- Jogos Analisados -->
+            <div id="jogosContainer" class="grid grid-cols-1 gap-4"></div>
 
-# Verificar se o bot do Telegram está funcionando
-def verify_telegram_bot():
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
-    try:
-        with create_http_client() as client:
-            response = client.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('ok'):
-                    return True, data['result']
-            return False, None
-    except Exception as e:
-        logger.error(f"❌ Erro ao verificar bot: {str(e)}")
-        return False, None
+            <!-- Bilhete do Dia -->
+            <div id="bilheteContainer" class="hidden">
+                <div class="bg-yellow-900 border border-yellow-600 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-star mr-2"></i> ⭐ BILHETE DO DIA
+                    </h3>
+                    <div id="bilheteContent"></div>
+                </div>
+            </div>
+        </div>
 
-# Função robusta para enviar mensagem para o Telegram
-def enviar_telegram(mensagem, max_retries=3):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.error("❌ Token ou Chat ID do Telegram não configurados")
-        return False
-    
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": mensagem,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True
-    }
-    
-    for attempt in range(max_retries):
-        try:
-            logger.info(f"📤 Tentativa {attempt + 1} de enviar mensagem para Telegram...")
-            with create_http_client() as client:
-                response = client.post(url, json=payload, timeout=15.0)
-                if response.status_code == 200:
-                    logger.info("✅ Mensagem enviada ao Telegram com sucesso!")
-                    return True
-        except Exception as e:
-            logger.warning(f"⚠️ Tentativa {attempt + 1} falhou: {str(e)}")
-            if attempt < max_retries - 1:
-                time.sleep(2)
-    
-    logger.error("❌ Todas as tentativas de enviar mensagem falharam")
-    return False
+        <!-- Informações -->
+        <div class="mt-8 bg-gray-800 p-6 rounded-lg">
+            <h3 class="text-xl font-semibold mb-4">
+                <i class="fas fa-info-circle mr-2"></i> Mercados Analisados
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-center">
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-trophy text-yellow-400 text-lg mb-2"></i>
+                    <div>Vitórias</div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-flag text-blue-400 text-lg mb-2"></i>
+                    <div>Escanteios</div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-card text-yellow-300 text-lg mb-2"></i>
+                    <div>Cartões</div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-futbol text-green-400 text-lg mb-2"></i>
+                    <div>Finalizações</div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded">
+                    <i class="fas fa-exchange-alt text-purple-400 text-lg mb-2"></i>
+                    <div>Ambos Marcam</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-# Obter dados detalhados de estatísticas
-def obter_estatisticas_jogo(match_id):
-    """Obtém estatísticas detalhadas de um jogo específico"""
-    url = f"https://api.football-data.org/v4/matches/{match_id}"
-    headers = {'X-Auth-Token': FOOTBALL_API_KEY}
-    
-    try:
-        with create_http_client() as client:
-            response = client.get(url, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"❌ Erro ao obter estatísticas do jogo {match_id}: {str(e)}")
-    
-    return None
+    <script>
+        // Analisar jogos
+        async function analisarJogos() {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analisando...';
+            button.disabled = true;
 
-# Gerar análise detalhada com múltiplos mercados
-def gerar_analise_detalhada(jogo):
-    """Gera análise detalhada com múltiplas estatísticas"""
-    home_team = jogo.get('homeTeam', {}).get('name', 'Time Casa')
-    away_team = jogo.get('awayTeam', {}).get('name', 'Time Fora')
-    status = jogo.get('status', 'SCHEDULED')
-    match_id = jogo.get('id')
-    
-    # Gerar análises para diferentes mercados
-    analises = []
-    
-    # 1. Análise de Vitória
-    confianca_vitoria = random.randint(65, 85)
-    analises.append({
-        "mercado": "🎯 Vitória",
-        "aposta": f"Vitória {home_team}" if random.choice([True, False]) else f"Empate/Double Chance",
-        "confianca": f"{confianca_vitoria}%",
-        "odds": f"{random.uniform(1.80, 2.50):.2f}",
-        "detalhes": f"Baseado no histórico de confrontos e forma atual"
-    })
-    
-    # 2. Análise de Escanteios
-    confianca_escanteios = random.randint(70, 90)
-    total_escanteios = random.randint(8, 12)
-    analises.append({
-        "mercado": "📐 Escanteios",
-        "aposta": f"Over {total_escanteios - 1}.5 Escanteios",
-        "confianca": f"{confianca_escanteios}%",
-        "odds": f"{random.uniform(1.70, 2.20):.2f}",
-        "detalhes": f"Ambos times possuem média de {random.randint(4, 6)} escanteios por jogo"
-    })
-    
-    # 3. Análise de Cartões
-    confianca_cartoes = random.randint(60, 80)
-    total_cartoes = random.randint(3, 6)
-    analises.append({
-        "mercado": "🟨 Cartões",
-        "aposta": f"Over {total_cartoes - 1}.5 Cartões",
-        "confianca": f"{confianca_cartoes}%",
-        "odds": f"{random.uniform(1.60, 2.00):.2f}",
-        "detalhes": f"Árbitro com média de {total_cartoes} cartões por jogo"
-    })
-    
-    # 4. Análise de Finalizações
-    confianca_finalizacoes = random.randint(68, 88)
-    total_finalizacoes = random.randint(20, 30)
-    analises.append({
-        "mercado": "⚽ Finalizações",
-        "aposta": f"Over {total_finalizacoes - 5}.5 Finalizações",
-        "confianca": f"{confianca_finalizacoes}%",
-        "odds": f"{random.uniform(1.65, 2.10):.2f}",
-        "detalhes": f"Times ofensivos com média de {total_finalizacoes} finalizações"
-    })
-    
-    return {
-        "time1": home_team,
-        "time2": away_team,
-        "status": status,
-        "analises": analises,
-        "match_id": match_id
-    }
-
-# Análise principal de jogos
-def analisar_jogos_avancado():
-    logger.info("🔍 Iniciando análise avançada de jogos...")
-    
-    # Obter jogos das APIs
-    jogos_api = obter_jogos_ao_vivo()
-    
-    jogos_analisados = []
-    
-    # Se API retornar jogos, analisar até 3 jogos
-    if jogos_api:
-        for jogo in jogos_api[:3]:  # Analisar apenas 3 jogos para qualidade
-            analise_detalhada = gerar_analise_detalhada(jogo)
-            jogos_analisados.append(analise_detalhada)
-    else:
-        # Fallback: análise simulada
-        logger.info("📊 Usando análise simulada (APIs sem dados)")
-        jogos_analisados = analisar_jogos_simulados()
-    
-    return criar_mensagem_analise(jogos_analisados), jogos_analisados
-
-# BILHETE DO DIA - Função específica
-def gerar_bilhete_do_dia():
-    """Gera o bilhete do dia com as melhores oportunidades"""
-    logger.info("⭐ Gerando Bilhete do Dia...")
-    
-    # Obter jogos das APIs
-    jogos_api = obter_jogos_ao_vivo()
-    
-    if not jogos_api:
-        # Usar jogos simulados se API não retornar
-        jogos_api = [
-            {
-                'homeTeam': {'name': 'Flamengo'},
-                'awayTeam': {'name': 'Palmeiras'}, 
-                'status': 'SCHEDULED',
-                'id': 1
-            },
-            {
-                'homeTeam': {'name': 'Barcelona'},
-                'awayTeam': {'name': 'Real Madrid'},
-                'status': 'SCHEDULED', 
-                'id': 2
-            },
-            {
-                'homeTeam': {'name': 'Bayern Munich'},
-                'awayTeam': {'name': 'Borussia Dortmund'},
-                'status': 'SCHEDULED',
-                'id': 3
+            try {
+                const response = await fetch('/analisar_jogos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                mostrarResultado(data);
+            } catch (error) {
+                mostrarResultado({
+                    status: 'error',
+                    mensagem: 'Erro na conexão: ' + error.message
+                });
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
             }
-        ]
-    
-    # Selecionar os 3 melhores jogos para o bilhete do dia
-    jogos_bilhete = []
-    for jogo in jogos_api[:3]:
-        analise = gerar_analise_detalhada(jogo)
-        # Selecionar apenas a melhor aposta de cada jogo para o bilhete
-        melhor_aposta = max(analise['analises'], key=lambda x: int(x['confianca'].replace('%', '')))
-        jogos_bilhete.append({
-            'time1': analise['time1'],
-            'time2': analise['time2'], 
-            'aposta': melhor_aposta['aposta'],
-            'mercado': melhor_aposta['mercado'],
-            'confianca': melhor_aposta['confianca'],
-            'odds': melhor_aposta['odds'],
-            'detalhes': melhor_aposta['detalhes']
-        })
-    
-    return criar_mensagem_bilhete_dia(jogos_bilhete), jogos_bilhete
-
-def criar_mensagem_bilhete_dia(jogos_bilhete):
-    """Cria mensagem formatada para o Bilhete do Dia"""
-    mensagem = "⭐ <b>BILHETE DO DIA - MELHORES OPORTUNIDADES</b>\n\n"
-    mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
-    mensagem += f"⏰ Horário: {datetime.now().strftime('%H:%M')}\n"
-    mensagem += "🎯 <i>Seleção das melhores apostas do dia</i>\n\n"
-    
-    total_odds = 1.0
-    
-    for i, jogo in enumerate(jogos_bilhete, 1):
-        mensagem += f"⚽ <b>Jogo {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
-        mensagem += f"🎲 {jogo['mercado']}: {jogo['aposta']}\n"
-        mensagem += f"📊 Confiança: {jogo['confianca']}\n"
-        mensagem += f"💰 Odds: {jogo['odds']}\n"
-        mensagem += f"💡 {jogo['detalhes']}\n\n"
-        
-        # Calcular odd total
-        try:
-            total_odds *= float(jogo['odds'])
-        except:
-            pass
-    
-    total_odds = round(total_odds, 2)
-    potencial_retorno = round(total_odds * 10, 2)  # Para aposta de R$10
-    
-    mensagem += f"🎫 <b>ODD TOTAL: {total_odds}</b>\n"
-    mensagem += f"💵 <b>Retorno potencial (R$10): R${potencial_retorno}</b>\n\n"
-    
-    mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
-    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
-    mensagem += "• Este bilhete contém as melhores oportunidades do dia\n"
-    mensagem += "• Nunca aposte mais do que pode perder\n\n"
-    
-    mensagem += "🔔 <i>Boa sorte e apostas responsáveis!</i>"
-    
-    return mensagem
-
-def obter_jogos_ao_vivo():
-    """Obtém jogos ao vivo da Football API"""
-    url = "https://api.football-data.org/v4/matches"
-    headers = {'X-Auth-Token': FOOTBALL_API_KEY}
-    
-    try:
-        with create_http_client() as client:
-            response = client.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('matches', [])
-    except Exception as e:
-        logger.error(f"❌ Erro na API de futebol: {str(e)}")
-    
-    return []
-
-def analisar_jogos_simulados():
-    """Análise simulada com dados realistas"""
-    times_famosos = [
-        ("Flamengo", "Palmeiras"),
-        ("Barcelona", "Real Madrid"),
-        ("Bayern Munich", "Borussia Dortmund"),
-        ("Manchester City", "Liverpool")
-    ]
-    
-    jogos_analisados = []
-    
-    for time1, time2 in times_famosos[:3]:
-        analises = []
-        
-        # Gerar 3-4 análises por jogo
-        mercados = ["🎯 Vitória", "📐 Escanteios", "🟨 Cartões", "⚽ Finalizações"]
-        for mercado in mercados:
-            confianca = random.randint(65, 85)
-            if mercado == "🎯 Vitória":
-                aposta = f"Vitória {time1}" if random.choice([True, False]) else "Empate"
-                odds = random.uniform(1.80, 2.50)
-            elif mercado == "📐 Escanteios":
-                aposta = f"Over {random.randint(8, 10)}.5 Escanteios"
-                odds = random.uniform(1.70, 2.20)
-            elif mercado == "🟨 Cartões":
-                aposta = f"Over {random.randint(3, 5)}.5 Cartões"
-                odds = random.uniform(1.60, 2.00)
-            else:  # Finalizações
-                aposta = f"Over {random.randint(20, 25)}.5 Finalizações"
-                odds = random.uniform(1.65, 2.10)
-            
-            analises.append({
-                "mercado": mercado,
-                "aposta": aposta,
-                "confianca": f"{confianca}%",
-                "odds": f"{odds:.2f}",
-                "detalhes": "Análise baseada em estatísticas históricas e forma atual"
-            })
-        
-        jogos_analisados.append({
-            "time1": time1,
-            "time2": time2,
-            "status": "SCHEDULED",
-            "analises": analises
-        })
-    
-    return jogos_analisados
-
-def criar_mensagem_analise(jogos_analisados):
-    """Cria mensagem formatada para Telegram"""
-    mensagem = "🎯 <b>ANÁLISE DE JOGOS DETALHADA</b>\n\n"
-    mensagem += f"📅 Data: {datetime.now().strftime('%d/%m/%Y')}\n"
-    mensagem += f"⏰ Hora: {datetime.now().strftime('%H:%M')}\n"
-    mensagem += "📊 <i>Análise multi-mercado com estatísticas avançadas</i>\n\n"
-    
-    for i, jogo in enumerate(jogos_analisados, 1):
-        status_emoji = "🔴" if jogo['status'] == 'LIVE' else "🟡" if jogo['status'] == 'IN_PLAY' else "⚪"
-        mensagem += f"{status_emoji} <b>JOGO {i}: {jogo['time1']} vs {jogo['time2']}</b>\n"
-        
-        for analise in jogo['analises']:
-            mensagem += f"   {analise['mercado']}: {analise['aposta']}\n"
-            mensagem += f"   📊 Confiança: {analise['confianca']} | 🎯 Odds: {analise['odds']}\n"
-            mensagem += f"   💡 {analise['detalhes']}\n\n"
-    
-    mensagem += "⚠️ <b>INFORMAÇÕES IMPORTANTES:</b>\n"
-    mensagem += "• Apostas envolvem risco - Aposte com responsabilidade\n"
-    mensagem += "• Análises são probabilísticas e não garantem resultados\n"
-    mensagem += "• Gerado por Sistema Bet Analyzer Professional\n\n"
-    
-    mensagem += "🔔 <i>Para análises em tempo real, visite nosso site!</i>"
-    
-    return mensagem
-
-# Rotas Flask
-@app.route('/')
-def index():
-    bot_status, bot_info = verify_telegram_bot()
-    return render_template('index.html', 
-                         bot_status=bot_status,
-                         bot_info=bot_info,
-                         chat_id=TELEGRAM_CHAT_ID)
-
-@app.route('/status')
-def status():
-    bot_status, bot_info = verify_telegram_bot()
-    return jsonify({
-        "status": "online",
-        "timestamp": datetime.now().isoformat(),
-        "telegram_bot": {
-            "online": bot_status,
-            "username": bot_info.get('username') if bot_info else None
         }
-    })
 
-@app.route('/analisar_jogos', methods=['POST'])
-def analisar_jogos_route():
-    try:
-        inicio = time.time()
-        mensagem, jogos = analisar_jogos_avancado()
-        tempo_analise = round(time.time() - inicio, 2)
-        
-        # Enviar para Telegram
-        sucesso_telegram = enviar_telegram(mensagem)
-        
-        logger.info(f"✅ Análise concluída em {tempo_analise}s | Telegram: {sucesso_telegram}")
-        
-        return jsonify({
-            "status": "success",
-            "mensagem": "Análise concluída e enviada para Telegram!" if sucesso_telegram else "Análise concluída, mas não foi possível enviar ao Telegram",
-            "jogos_analisados": len(jogos),
-            "tempo_analise": f"{tempo_analise}s",
-            "telegram_enviado": sucesso_telegram,
-            "jogos": jogos
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Erro na análise: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "mensagem": f"Erro na análise: {str(e)}"
-        }), 500
+        // GERAR BILHETE DO DIA - NOVA FUNÇÃO
+        async function gerarBilheteDia() {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Gerando...';
+            button.disabled = true;
 
-# NOVA ROTA: Bilhete do Dia
-@app.route('/bilhete_do_dia', methods=['POST'])
-def bilhete_do_dia_route():
-    try:
-        inicio = time.time()
-        mensagem, bilhete = gerar_bilhete_do_dia()
-        tempo_geracao = round(time.time() - inicio, 2)
-        
-        # Enviar para Telegram
-        sucesso_telegram = enviar_telegram(mensagem)
-        
-        logger.info(f"⭐ Bilhete do Dia gerado em {tempo_geracao}s | Telegram: {sucesso_telegram}")
-        
-        return jsonify({
-            "status": "success",
-            "mensagem": "Bilhete do Dia gerado e enviado para Telegram!" if sucesso_telegram else "Bilhete do Dia gerado, mas não foi possível enviar ao Telegram",
-            "tipo": "bilhete_dia",
-            "tempo_geracao": f"{tempo_geracao}s",
-            "telegram_enviado": sucesso_telegram,
-            "bilhete": bilhete
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Erro ao gerar bilhete do dia: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "mensagem": f"Erro ao gerar bilhete do dia: {str(e)}"
-        }), 500
+            try {
+                const response = await fetch('/bilhete_do_dia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                mostrarResultado(data);
+            } catch (error) {
+                mostrarResultado({
+                    status: 'error',
+                    mensagem: 'Erro ao gerar bilhete: ' + error.message
+                });
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
 
-@app.route('/teste_bilhetes', methods=['POST'])
-def teste_bilhetes():
-    try:
-        mensagem_teste = "🧪 <b>TESTE DO SISTEMA BET ANALYZER</b>\n\n"
-        mensagem_teste += "✅ Sistema operacional\n"
-        mensagem_teste += f"📅 Data/hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        mensagem_teste += "🎯 Análise multi-mercado ativa\n"
-        mensagem_teste += "🌟 Sistema pronto para análises detalhadas!"
-        
-        sucesso = enviar_telegram(mensagem_teste)
-        
-        return jsonify({
-            "status": "success" if sucesso else "warning",
-            "mensagem": "Teste realizado com sucesso!" if sucesso else "Sistema operando, mas Telegram não respondeu",
-            "telegram_enviado": sucesso
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Erro no teste: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "mensagem": f"Erro no teste: {str(e)}"
-        }), 500
+        // Testar sistema
+        async function testarSistema() {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Testando...';
+            button.disabled = true;
 
-@app.route('/health')
-def health_check():
-    return jsonify({
-        "status": "healthy", 
-        "timestamp": datetime.now().isoformat(),
-        "service": "Bet Analyzer Professional"
-    })
+            try {
+                const response = await fetch('/teste_bilhetes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                mostrarResultado(data);
+            } catch (error) {
+                mostrarResultado({
+                    status: 'error',
+                    mensagem: 'Erro no teste: ' + error.message
+                });
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+        // Mostrar resultados
+        function mostrarResultado(data) {
+            const resultadoDiv = document.getElementById('resultado');
+            const contentDiv = document.getElementById('resultadoContent');
+            const jogosContainer = document.getElementById('jogosContainer');
+            const bilheteContainer = document.getElementById('bilheteContainer');
+            const bilheteContent = document.getElementById('bilheteContent');
+            
+            resultadoDiv.classList.remove('hidden');
+            jogosContainer.innerHTML = '';
+            bilheteContainer.classList.add('hidden');
+
+            // Mensagem de status
+            if (data.status === 'success') {
+                contentDiv.innerHTML = `
+                    <div class="bg-green-900 text-green-200 p-4 rounded mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <strong>✅ ${data.tipo === 'bilhete_dia' ? 'Bilhete do Dia Gerado!' : 'Análise Concluída!'}</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
+                        <div class="text-sm mt-2">
+                            <i class="fas fa-clock mr-1"></i> Tempo: ${data.tempo_analise || data.tempo_geracao} | 
+                            <i class="fas fa-paper-plane mr-1 ml-2"></i> Telegram: ${data.telegram_enviado ? '✅' : '❌'}
+                        </div>
+                    </div>
+                `;
+            } else if (data.status === 'warning') {
+                contentDiv.innerHTML = `
+                    <div class="bg-yellow-900 text-yellow-200 p-4 rounded mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>⚠️ Atenção!</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
+                    </div>
+                `;
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="bg-red-900 text-red-200 p-4 rounded mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            <strong>❌ Erro!</strong>
+                        </div>
+                        <div class="mt-2">${data.mensagem}</div>
+                    </div>
+                `;
+            }
+
+            // Mostrar JOGOS analisados (análise normal)
+            if (data.jogos && data.jogos.length > 0) {
+                data.jogos.forEach((jogo, index) => {
+                    const jogoCard = document.createElement('div');
+                    jogoCard.className = 'bg-gray-700 p-4 rounded-lg';
+                    
+                    let statusBadge = '';
+                    if (jogo.status === 'LIVE') {
+                        statusBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-sm ml-2">AO VIVO</span>';
+                    } else if (jogo.status === 'IN_PLAY') {
+                        statusBadge = '<span class="bg-yellow-500 text-white px-2 py-1 rounded text-sm ml-2">EM ANDAMENTO</span>';
+                    }
+                    
+                    jogoCard.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-lg">⚽ Jogo ${index + 1}: ${jogo.time1} vs ${jogo.time2}</h4>
+                            ${statusBadge}
+                        </div>
+                        <div class="space-y-2">
+                            ${jogo.analises.map(analise => `
+                                <div class="bg-gray-600 p-3 rounded">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <strong>${analise.mercado}</strong>
+                                            <div class="text-sm">${analise.aposta}</div>
+                                            <div class="text-xs text-gray-300 mt-1">${analise.detalhes}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-green-400 font-semibold">${analise.confianca}</div>
+                                            <div class="text-yellow-400">Odds: ${analise.odds}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    jogosContainer.appendChild(jogoCard);
+                });
+            }
+
+            // Mostrar BILHETE DO DIA
+            if (data.bilhete && data.bilhete.length > 0) {
+                bilheteContainer.classList.remove('hidden');
+                
+                let bilheteHTML = '<div class="space-y-4">';
+                
+                data.bilhete.forEach((jogo, index) => {
+                    bilheteHTML += `
+                        <div class="bg-yellow-800 p-4 rounded-lg">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-semibold text-lg">⚽ ${jogo.time1} vs ${jogo.time2}</h4>
+                                    <div class="text-sm mt-1">
+                                        <strong>${jogo.mercado}:</strong> ${jogo.aposta}
+                                    </div>
+                                    <div class="text-xs text-yellow-200 mt-1">${jogo.detalhes}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-green-300 font-semibold text-lg">${jogo.confianca}</div>
+                                    <div class="text-yellow-300 font-bold">Odds: ${jogo.odds}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Calcular odd total
+                let totalOdds = 1.0;
+                data.bilhete.forEach(jogo => {
+                    try {
+                        totalOdds *= parseFloat(jogo.odds);
+                    } catch (e) {}
+                });
+                totalOdds = totalOdds.toFixed(2);
+                const retorno = (totalOdds * 10).toFixed(2);
+
+                bilheteHTML += `
+                    <div class="bg-yellow-700 p-4 rounded-lg text-center">
+                        <div class="text-xl font-bold">🎫 ODD TOTAL: ${totalOdds}</div>
+                        <div class="text-lg font-semibold">💵 Retorno (R$10): R$${retorno}</div>
+                    </div>
+                `;
+
+                bilheteHTML += '</div>';
+                bilheteContent.innerHTML = bilheteHTML;
+            }
+        }
+    </script>
+</body>
+</html>
