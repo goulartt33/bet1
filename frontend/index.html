@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bet Analyzer - Sistema Profissional</title>
+    <title>Bet Analyzer - Sistema com Cache Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -11,13 +11,13 @@
     <div class="container mx-auto px-4 py-8">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-green-500 mb-2">
-                <i class="fas fa-chart-line"></i> Bet Analyzer Pro
+                <i class="fas fa-brain"></i> Bet Analyzer Pro
             </h1>
-            <p class="text-gray-400">Análise multi-mercado com inteligência artificial</p>
+            <p class="text-gray-400">Sistema inteligente com cache de 6 horas</p>
         </header>
 
         <!-- Status do Sistema -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="bg-gray-800 p-4 rounded-lg">
                 <div class="flex items-center justify-between">
                     <div>
@@ -32,20 +32,37 @@
             <div class="bg-gray-800 p-4 rounded-lg">
                 <h3 class="font-semibold text-lg">⚡ Sistema</h3>
                 <div class="text-green-400">Operacional</div>
-                <div class="text-sm text-gray-400">Análise em tempo real</div>
+                <div class="text-sm text-gray-400">Cache inteligente ativo</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold text-lg">💾 Cache</h3>
+                <div class="{{ 'text-green-400' if cache_info.valido else 'text-yellow-400' }}">
+                    {{ '✅ Válido' if cache_info.valido else '🔄 Atualizar' }}
+                </div>
+                <div class="text-sm text-gray-400">{{ cache_info.tempo }}</div>
             </div>
         </div>
 
         <!-- Controles PRINCIPAIS -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <button onclick="analisarJogos()" class="bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <button onclick="analisarJogos(false)" class="bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
                 <i class="fas fa-search mr-2"></i> Analisar Jogos
             </button>
-            <button onclick="gerarBilheteDia()" class="bg-yellow-600 hover:bg-yellow-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+            <button onclick="gerarBilheteDia(false)" class="bg-yellow-600 hover:bg-yellow-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
                 <i class="fas fa-star mr-2"></i> Bilhete do Dia
             </button>
             <button onclick="testarSistema()" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
                 <i class="fas fa-test-tube mr-2"></i> Testar Sistema
+            </button>
+        </div>
+
+        <!-- Controles AVANÇADOS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <button onclick="analisarJogos(true)" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center text-sm">
+                <i class="fas fa-sync-alt mr-2"></i> Forçar Atualização (Jogos)
+            </button>
+            <button onclick="gerarBilheteDia(true)" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg font-semibold transition duration-200 flex items-center justify-center text-sm">
+                <i class="fas fa-sync-alt mr-2"></i> Forçar Atualização (Bilhete)
             </button>
         </div>
 
@@ -59,7 +76,7 @@
             </div>
 
             <!-- Jogos Analisados -->
-            <div id="jogosContainer" class="grid grid-cols-1 gap-4"></div>
+            <div id="jogosContainer" class="grid grid-cols-1 gap-4 mb-6"></div>
 
             <!-- Bilhete do Dia -->
             <div id="bilheteContainer" class="hidden">
@@ -72,31 +89,28 @@
             </div>
         </div>
 
-        <!-- Informações -->
+        <!-- Informações do Sistema -->
         <div class="mt-8 bg-gray-800 p-6 rounded-lg">
             <h3 class="text-xl font-semibold mb-4">
-                <i class="fas fa-info-circle mr-2"></i> Mercados Analisados
+                <i class="fas fa-info-circle mr-2"></i> Sistema de Cache Inteligente
             </h3>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-center">
-                <div class="bg-gray-700 p-3 rounded">
-                    <i class="fas fa-trophy text-yellow-400 text-lg mb-2"></i>
-                    <div>Vitórias</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <h4 class="font-semibold text-green-400 mb-2">✅ Benefícios:</h4>
+                    <ul class="list-disc list-inside text-gray-300 space-y-1">
+                        <li>Economiza consumo das APIs</li>
+                        <li>Resposta mais rápida</li>
+                        <li>Evita spam no Telegram</li>
+                        <li>Dados consistentes por 6 horas</li>
+                    </ul>
                 </div>
-                <div class="bg-gray-700 p-3 rounded">
-                    <i class="fas fa-flag text-blue-400 text-lg mb-2"></i>
-                    <div>Escanteios</div>
-                </div>
-                <div class="bg-gray-700 p-3 rounded">
-                    <i class="fas fa-card text-yellow-300 text-lg mb-2"></i>
-                    <div>Cartões</div>
-                </div>
-                <div class="bg-gray-700 p-3 rounded">
-                    <i class="fas fa-futbol text-green-400 text-lg mb-2"></i>
-                    <div>Finalizações</div>
-                </div>
-                <div class="bg-gray-700 p-3 rounded">
-                    <i class="fas fa-exchange-alt text-purple-400 text-lg mb-2"></i>
-                    <div>Ambos Marcam</div>
+                <div>
+                    <h4 class="font-semibold text-yellow-400 mb-2">🔄 Quando atualizar:</h4>
+                    <ul class="list-disc list-inside text-gray-300 space-y-1">
+                        <li>A cada 6 horas automaticamente</li>
+                        <li>Quando quiser dados mais recentes</li>
+                        <li>Usando "Forçar Atualização"</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -104,10 +118,11 @@
 
     <script>
         // Analisar jogos
-        async function analisarJogos() {
+        async function analisarJogos(forcarAtualizacao = false) {
             const button = event.target;
             const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analisando...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> ' + 
+                (forcarAtualizacao ? 'Forçando...' : 'Analisando...');
             button.disabled = true;
 
             try {
@@ -115,7 +130,10 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    body: JSON.stringify({
+                        forcar_atualizacao: forcarAtualizacao
+                    })
                 });
                 
                 const data = await response.json();
@@ -131,11 +149,12 @@
             }
         }
 
-        // GERAR BILHETE DO DIA - NOVA FUNÇÃO
-        async function gerarBilheteDia() {
+        // GERAR BILHETE DO DIA
+        async function gerarBilheteDia(forcarAtualizacao = false) {
             const button = event.target;
             const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Gerando...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> ' + 
+                (forcarAtualizacao ? 'Forçando...' : 'Gerando...');
             button.disabled = true;
 
             try {
@@ -143,7 +162,10 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    body: JSON.stringify({
+                        forcar_atualizacao: forcarAtualizacao
+                    })
                 });
                 
                 const data = await response.json();
@@ -200,43 +222,40 @@
             bilheteContainer.classList.add('hidden');
 
             // Mensagem de status
+            let statusIcon = 'fa-check-circle';
+            let statusColor = 'green';
+            
             if (data.status === 'success') {
-                contentDiv.innerHTML = `
-                    <div class="bg-green-900 text-green-200 p-4 rounded mb-4">
-                        <div class="flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <strong>✅ ${data.tipo === 'bilhete_dia' ? 'Bilhete do Dia Gerado!' : 'Análise Concluída!'}</strong>
-                        </div>
-                        <div class="mt-2">${data.mensagem}</div>
-                        <div class="text-sm mt-2">
-                            <i class="fas fa-clock mr-1"></i> Tempo: ${data.tempo_analise || data.tempo_geracao} | 
-                            <i class="fas fa-paper-plane mr-1 ml-2"></i> Telegram: ${data.telegram_enviado ? '✅' : '❌'}
-                        </div>
-                    </div>
-                `;
+                statusIcon = 'fa-check-circle';
+                statusColor = 'green';
             } else if (data.status === 'warning') {
-                contentDiv.innerHTML = `
-                    <div class="bg-yellow-900 text-yellow-200 p-4 rounded mb-4">
-                        <div class="flex items-center">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <strong>⚠️ Atenção!</strong>
-                        </div>
-                        <div class="mt-2">${data.mensagem}</div>
-                    </div>
-                `;
+                statusIcon = 'fa-exclamation-triangle';
+                statusColor = 'yellow';
             } else {
-                contentDiv.innerHTML = `
-                    <div class="bg-red-900 text-red-200 p-4 rounded mb-4">
-                        <div class="flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            <strong>❌ Erro!</strong>
-                        </div>
-                        <div class="mt-2">${data.mensagem}</div>
-                    </div>
-                `;
+                statusIcon = 'fa-times-circle';
+                statusColor = 'red';
             }
 
-            // Mostrar JOGOS analisados (análise normal)
+            const cacheInfo = data.usando_cache ? 
+                '<div class="text-blue-400 text-sm mt-1"><i class="fas fa-database mr-1"></i> Usando cache</div>' : 
+                '<div class="text-purple-400 text-sm mt-1"><i class="fas fa-sync-alt mr-1"></i> Dados atualizados</div>';
+
+            contentDiv.innerHTML = `
+                <div class="bg-${statusColor}-900 text-${statusColor}-200 p-4 rounded mb-4">
+                    <div class="flex items-center">
+                        <i class="fas ${statusIcon} mr-2"></i>
+                        <strong>${data.tipo === 'bilhete_dia' ? '⭐ Bilhete do Dia' : '🎯 Análise de Jogos'}</strong>
+                    </div>
+                    <div class="mt-2">${data.mensagem}</div>
+                    ${cacheInfo}
+                    <div class="text-sm mt-2">
+                        <i class="fas fa-clock mr-1"></i> Tempo: ${data.tempo_analise || data.tempo_geracao} | 
+                        <i class="fas fa-paper-plane mr-1 ml-2"></i> Telegram: ${data.telegram_enviado ? '✅' : '❌'}
+                    </div>
+                </div>
+            `;
+
+            // Mostrar JOGOS analisados
             if (data.jogos && data.jogos.length > 0) {
                 data.jogos.forEach((jogo, index) => {
                     const jogoCard = document.createElement('div');
@@ -254,6 +273,7 @@
                             <h4 class="font-semibold text-lg">⚽ Jogo ${index + 1}: ${jogo.time1} vs ${jogo.time2}</h4>
                             ${statusBadge}
                         </div>
+                        <div class="text-sm text-gray-300 mb-3">🏆 ${jogo.liga || 'Amistoso'}</div>
                         <div class="space-y-2">
                             ${jogo.analises.map(analise => `
                                 <div class="bg-gray-600 p-3 rounded">
@@ -282,41 +302,40 @@
                 bilheteContainer.classList.remove('hidden');
                 
                 let bilheteHTML = '<div class="space-y-4">';
+                let totalOdds = 1.0;
                 
                 data.bilhete.forEach((jogo, index) => {
                     bilheteHTML += `
                         <div class="bg-yellow-800 p-4 rounded-lg">
                             <div class="flex justify-between items-start">
-                                <div>
+                                <div class="flex-1">
                                     <h4 class="font-semibold text-lg">⚽ ${jogo.time1} vs ${jogo.time2}</h4>
-                                    <div class="text-sm mt-1">
+                                    <div class="text-sm text-yellow-200 mb-2">🏆 ${jogo.liga}</div>
+                                    <div class="text-sm">
                                         <strong>${jogo.mercado}:</strong> ${jogo.aposta}
                                     </div>
                                     <div class="text-xs text-yellow-200 mt-1">${jogo.detalhes}</div>
                                 </div>
-                                <div class="text-right">
+                                <div class="text-right ml-4">
                                     <div class="text-green-300 font-semibold text-lg">${jogo.confianca}</div>
-                                    <div class="text-yellow-300 font-bold">Odds: ${jogo.odds}</div>
+                                    <div class="text-yellow-300 font-bold text-xl">${jogo.odds}</div>
                                 </div>
                             </div>
                         </div>
                     `;
-                });
-
-                // Calcular odd total
-                let totalOdds = 1.0;
-                data.bilhete.forEach(jogo => {
+                    
                     try {
                         totalOdds *= parseFloat(jogo.odds);
                     } catch (e) {}
                 });
+
                 totalOdds = totalOdds.toFixed(2);
                 const retorno = (totalOdds * 10).toFixed(2);
 
                 bilheteHTML += `
                     <div class="bg-yellow-700 p-4 rounded-lg text-center">
-                        <div class="text-xl font-bold">🎫 ODD TOTAL: ${totalOdds}</div>
-                        <div class="text-lg font-semibold">💵 Retorno (R$10): R$${retorno}</div>
+                        <div class="text-2xl font-bold mb-2">🎫 ODD TOTAL: ${totalOdds}</div>
+                        <div class="text-xl font-semibold">💵 Retorno (R$10): R$${retorno}</div>
                     </div>
                 `;
 
@@ -324,6 +343,22 @@
                 bilheteContent.innerHTML = bilheteHTML;
             }
         }
+
+        // Atualizar status do cache periodicamente
+        async function atualizarStatusCache() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                // Aqui você pode atualizar indicadores visuais do cache se quiser
+                console.log('Status do cache:', data.cache);
+            } catch (error) {
+                console.error('Erro ao atualizar status do cache:', error);
+            }
+        }
+
+        // Atualizar a cada minuto
+        setInterval(atualizarStatusCache, 60000);
     </script>
 </body>
 </html>
