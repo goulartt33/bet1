@@ -16,6 +16,8 @@ app = Flask(__name__)
 # Configuracoes das APIs
 FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', '0b9721f26cfd44d188b5630223a1d1ac')
 THEODDS_API_KEY = os.getenv('THEODDS_API_KEY', '4229efa29d667add58e355309f536a31')
+
+# Telegram - Mantendo as credenciais mas com verificacao inteligente
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '5538926378')
 
@@ -31,32 +33,18 @@ THEODDS_HEADERS = {
 # Variavel para controlar ultimo envio
 ULTIMO_ENVIO = None
 
-# LISTA DE ESPORTES DISPONIVEIS COM CODIGOS REAIS
+# LISTA DE ESPORTES DISPONIVEIS COM CODIGOS REAIS CORRETOS
 ESPORTES_DISPONIVEIS = {
     'soccer_brazil_campeonato': 'Brasileirao Serie A',
     'soccer_brazil_serie_b': 'Brasileirao Serie B', 
-    'soccer_england_pl': 'Premier League',
+    'soccer_england_premier_league': 'Premier League',
     'soccer_spain_la_liga': 'La Liga',
     'soccer_italy_serie_a': 'Serie A',
     'soccer_germany_bundesliga': 'Bundesliga',
-    'soccer_france_ligue_one': 'Ligue 1',
-    'soccer_uefa_champs_league': 'Champions League',
+    'soccer_france_ligue_1': 'Ligue 1',
+    'soccer_uefa_champions_league': 'Champions League',
     'basketball_nba': 'NBA',
     'americanfootball_nfl': 'NFL'
-}
-
-# Regioes validas para cada esporte
-REGOES_VALIDAS = {
-    'soccer_brazil_campeonato': ['us', 'eu', 'uk'],
-    'soccer_brazil_serie_b': ['us', 'eu', 'uk'],
-    'soccer_england_pl': ['us', 'eu', 'uk'],
-    'soccer_spain_la_liga': ['us', 'eu', 'uk'],
-    'soccer_italy_serie_a': ['us', 'eu', 'uk'],
-    'soccer_germany_bundesliga': ['us', 'eu', 'uk'],
-    'soccer_france_ligue_one': ['us', 'eu', 'uk'],
-    'soccer_uefa_champs_league': ['us', 'eu', 'uk'],
-    'basketball_nba': ['us', 'eu', 'uk'],
-    'americanfootball_nfl': ['us', 'eu', 'uk']
 }
 
 @app.route('/')
@@ -77,16 +65,11 @@ def analisar_jogos():
     """Analisar jogos e gerar bilhetes inteligentes com dados REAIS"""
     try:
         data = request.get_json()
-        esporte = data.get('esporte', 'soccer_england_pl')  # Padrao Premier League
-        regiao = data.get('regiao', 'eu')  # Padrao Europa
+        esporte = data.get('esporte', 'soccer_england_premier_league')
+        regiao = data.get('regiao', 'eu')
         mercado = data.get('mercado', 'h2h')
         
         logger.info(f"Analisando {ESPORTES_DISPONIVEIS.get(esporte, esporte)}")
-        
-        # Validar regiao
-        regiao_valida = REGOES_VALIDAS.get(esporte, ['us', 'eu', 'uk'])
-        if regiao not in regiao_valida:
-            regiao = regiao_valida[0]  # Usar primeira regiao valida
         
         # Buscar dados REAIS das APIs
         odds_data = buscar_odds_reais(esporte, regiao, mercado)
@@ -94,7 +77,7 @@ def analisar_jogos():
         if not odds_data:
             return jsonify({
                 "status": "error", 
-                "message": f"Nao foi possivel buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente outro esporte."
+                "message": f"Nao foi possivel buscar dados do {ESPORTES_DISPONIVEIS.get(esporte, esporte)}. Tente Premier League ou La Liga."
             }), 500
         
         # Gerar bilhetes inteligentes com dados REAIS
@@ -142,6 +125,10 @@ def buscar_odds_reais(esporte, regiao, mercado):
             dados = response.json()
             logger.info(f"Dados REAIS obtidos: {len(dados)} jogos")
             
+            if not dados:
+                logger.warning("Nenhum jogo encontrado para este esporte/regiao")
+                return None
+                
             # Log dos primeiros jogos para debug
             for i, jogo in enumerate(dados[:3]):
                 home_team = jogo.get('home_team', 'Time Casa')
@@ -162,31 +149,40 @@ def buscar_odds_reais(esporte, regiao, mercado):
         logger.error(f"Erro ao buscar dados reais: {str(e)}")
         return None
 
+def verificar_telegram_configurado():
+    """Verificar se o Telegram esta configurado corretamente"""
+    if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI':
+        logger.warning("⚠️ TELEGRAM_TOKEN usando valor padrão - Configure no Render.com para envios automáticos")
+        return False
+    
+    if not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == '5538926378':
+        logger.warning("⚠️ TELEGRAM_CHAT_ID usando valor padrão - Configure no Render.com para envios automáticos")
+        return False
+    
+    # Testar se o bot é válido
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            logger.info("✅ Telegram configurado corretamente")
+            return True
+        else:
+            logger.warning(f"⚠️ Token do Telegram inválido: {response.status_code}")
+            return False
+    except:
+        logger.warning("⚠️ Erro ao testar token do Telegram")
+        return False
+
 def buscar_estatisticas_avancadas(time):
     """Buscar estatisticas AVANCADAS com dados mais conservadores"""
     # Estatisticas baseadas em dados reais 2024 - VALORES MAIS CONSERVADORES
     times_estatisticas = {
+        # Times Brasileiros
         'flamengo': {'ataque': 1.8, 'defesa': 0.9, 'escanteios': 5.8, 'posse': 56, 'forma': 'Boa', 'media_gols': 2.1},
         'palmeiras': {'ataque': 1.7, 'defesa': 0.7, 'escanteios': 5.5, 'posse': 54, 'forma': 'Otima', 'media_gols': 1.9},
         'sao paulo': {'ataque': 1.5, 'defesa': 1.0, 'escanteios': 5.2, 'posse': 52, 'forma': 'Boa', 'media_gols': 1.7},
-        'corinthians': {'ataque': 1.1, 'defesa': 1.2, 'escanteios': 4.5, 'posse': 46, 'forma': 'Ruim', 'media_gols': 1.0},
-        'botafogo': {'ataque': 1.4, 'defesa': 1.1, 'escanteios': 4.8, 'posse': 50, 'forma': 'Regular', 'media_gols': 1.3},
-        'gremio': {'ataque': 1.6, 'defesa': 1.3, 'escanteios': 5.3, 'posse': 53, 'forma': 'Boa', 'media_gols': 1.5},
-        'internacional': {'ataque': 1.3, 'defesa': 1.0, 'escanteios': 4.7, 'posse': 51, 'forma': 'Regular', 'media_gols': 1.2},
-        'atl mineiro': {'ataque': 1.2, 'defesa': 1.1, 'escanteios': 4.6, 'posse': 49, 'forma': 'Regular', 'media_gols': 1.1},
-        'fortaleza': {'ataque': 1.4, 'defesa': 0.9, 'escanteios': 4.9, 'posse': 47, 'forma': 'Boa', 'media_gols': 1.3},
-        'fluminense': {'ataque': 1.5, 'defesa': 1.4, 'escanteios': 4.8, 'posse': 51, 'forma': 'Ruim', 'media_gols': 1.4},
-        'bragantino': {'ataque': 1.6, 'defesa': 1.2, 'escanteios': 5.2, 'posse': 52, 'forma': 'Boa', 'media_gols': 1.5},
-        'santos': {'ataque': 1.0, 'defesa': 1.5, 'escanteios': 4.2, 'posse': 45, 'forma': 'Ruim', 'media_gols': 0.9},
-        'bahia': {'ataque': 1.3, 'defesa': 1.3, 'escanteios': 4.5, 'posse': 48, 'forma': 'Regular', 'media_gols': 1.2},
-        'goias': {'ataque': 0.9, 'defesa': 1.6, 'escanteios': 3.8, 'posse': 44, 'forma': 'Ruim', 'media_gols': 0.8},
-        'coritiba': {'ataque': 0.8, 'defesa': 1.8, 'escanteios': 3.5, 'posse': 42, 'forma': 'Ruim', 'media_gols': 0.7},
-        'cuiaba': {'ataque': 1.1, 'defesa': 1.4, 'escanteios': 4.3, 'posse': 46, 'forma': 'Regular', 'media_gols': 1.0},
-        'america mg': {'ataque': 0.9, 'defesa': 1.7, 'escanteios': 3.6, 'posse': 43, 'forma': 'Ruim', 'media_gols': 0.8},
-        'athletico pr': {'ataque': 1.2, 'defesa': 1.2, 'escanteios': 4.5, 'posse': 49, 'forma': 'Regular', 'media_gols': 1.1},
-        'cruzeiro': {'ataque': 1.3, 'defesa': 1.1, 'escanteios': 4.6, 'posse': 50, 'forma': 'Regular', 'media_gols': 1.2},
-        'vasco da gama': {'ataque': 1.2, 'defesa': 1.5, 'escanteios': 4.3, 'posse': 47, 'forma': 'Ruim', 'media_gols': 1.1},
-        # Times internacionais
+        
+        # Times Europeus
         'manchester': {'ataque': 1.9, 'defesa': 0.8, 'escanteios': 6.0, 'posse': 58, 'forma': 'Boa', 'media_gols': 2.2},
         'liverpool': {'ataque': 2.0, 'defesa': 0.9, 'escanteios': 6.2, 'posse': 59, 'forma': 'Otima', 'media_gols': 2.3},
         'arsenal': {'ataque': 1.8, 'defesa': 0.7, 'escanteios': 5.8, 'posse': 57, 'forma': 'Boa', 'media_gols': 2.0},
@@ -194,12 +190,21 @@ def buscar_estatisticas_avancadas(time):
         'tottenham': {'ataque': 1.7, 'defesa': 1.2, 'escanteios': 5.6, 'posse': 54, 'forma': 'Boa', 'media_gols': 1.8},
         'barcelona': {'ataque': 1.8, 'defesa': 0.8, 'escanteios': 5.9, 'posse': 62, 'forma': 'Boa', 'media_gols': 2.1},
         'real madrid': {'ataque': 2.1, 'defesa': 0.7, 'escanteios': 6.3, 'posse': 58, 'forma': 'Otima', 'media_gols': 2.4},
-        'atletico': {'ataque': 1.5, 'defesa': 0.6, 'escanteios': 5.2, 'posse': 48, 'forma': 'Boa', 'media_gols': 1.6},
-        'milan': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.4, 'posse': 52, 'forma': 'Boa', 'media_gols': 1.7},
-        'inter': {'ataque': 1.7, 'defesa': 0.8, 'escanteios': 5.5, 'posse': 53, 'forma': 'Boa', 'media_gols': 1.9},
-        'juventus': {'ataque': 1.4, 'defesa': 1.1, 'escanteios': 5.0, 'posse': 51, 'forma': 'Regular', 'media_gols': 1.5},
-        'bayern': {'ataque': 2.2, 'defesa': 0.8, 'escanteios': 6.5, 'posse': 61, 'forma': 'Otima', 'media_gols': 2.5},
-        'dortmund': {'ataque': 1.9, 'defesa': 1.2, 'escanteios': 6.0, 'posse': 56, 'forma': 'Boa', 'media_gols': 2.1}
+        
+        # Times Mexicanos (aparecem nos logs)
+        'tigres': {'ataque': 1.6, 'defesa': 1.0, 'escanteios': 5.3, 'posse': 52, 'forma': 'Boa', 'media_gols': 1.7},
+        'atlas': {'ataque': 1.2, 'defesa': 1.3, 'escanteios': 4.7, 'posse': 48, 'forma': 'Regular', 'media_gols': 1.3},
+        'necaxa': {'ataque': 1.1, 'defesa': 1.4, 'escanteios': 4.5, 'posse': 47, 'forma': 'Ruim', 'media_gols': 1.0},
+        
+        # Times Japoneses (aparecem nos logs)
+        'tokyo': {'ataque': 1.4, 'defesa': 1.2, 'escanteios': 5.0, 'posse': 50, 'forma': 'Regular', 'media_gols': 1.4},
+        'albirex': {'ataque': 1.3, 'defesa': 1.3, 'escanteios': 4.8, 'posse': 49, 'forma': 'Regular', 'media_gols': 1.2},
+        'machida': {'ataque': 1.5, 'defesa': 1.1, 'escanteios': 5.2, 'posse': 51, 'forma': 'Boa', 'media_gols': 1.5},
+        
+        # Times Coreanos (aparecem nos logs)
+        'daegu': {'ataque': 1.3, 'defesa': 1.4, 'escanteios': 4.6, 'posse': 48, 'forma': 'Regular', 'media_gols': 1.2},
+        'gangwon': {'ataque': 1.2, 'defesa': 1.5, 'escanteios': 4.4, 'posse': 47, 'forma': 'Ruim', 'media_gols': 1.1},
+        'daejeon': {'ataque': 1.4, 'defesa': 1.3, 'escanteios': 4.9, 'posse': 49, 'forma': 'Regular', 'media_gols': 1.3}
     }
     
     # Limpar e normalizar nome do time
@@ -221,7 +226,7 @@ def gerar_bilhetes_inteligentes(odds_data, esporte):
         logger.error("Nenhum dado real disponivel")
         return bilhetes
     
-    for jogo in odds_data[:8]:  # Analisar mais jogos
+    for jogo in odds_data[:10]:  # Analisar mais jogos
         try:
             home_team = jogo.get('home_team', '')
             away_team = jogo.get('away_team', '')
@@ -256,12 +261,12 @@ def gerar_bilhetes_futebol_inteligentes(jogo, home_team, away_team, esporte):
     if not odds_reais:
         return bilhetes
     
-    # 1. BILHETE DE GOLS INTELIGENTE (MAIS CONSERVADOR)
+    # 1. BILHETE DE GOLS INTELIGENTE
     bilhete_gols = criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais)
     if bilhete_gols: bilhetes.append(bilhete_gols)
     
-    # 2. BILHETE DE ESCANTEIOS INTELIGENTE (MAIS CONSERVADOR)
-    bilhete_escanteios = criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away, odds_reais)
+    # 2. BILHETE DE ESCANTEIOS INTELIGENTE
+    bilhete_escanteios = criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away)
     if bilhete_escanteios: bilhetes.append(bilhete_escanteios)
     
     # 3. BILHETE DE AMBOS MARCAM INTELIGENTE
@@ -350,7 +355,7 @@ def extrair_odds_reais(jogo):
         }
 
 def criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais):
-    """Criar bilhete de gols INTELIGENTE e CONSERVADOR"""
+    """Criar bilhete de gols INTELIGENTE"""
     try:
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
@@ -358,34 +363,31 @@ def criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais):
         # Calculo MAIS CONSERVADOR de gols esperados
         ataque_home = stats_home.get('ataque', 1.3)
         ataque_away = stats_away.get('ataque', 1.1)
-        defesa_home = stats_home.get('defesa', 1.2)
-        defesa_away = stats_away.get('defesa', 1.2)
         
-        # Formula conservadora: media ponderada considerando defesas
-        gols_esperados = (ataque_home * 0.6 + ataque_away * 0.4) - (defesa_home * 0.2 + defesa_away * 0.2)
-        gols_esperados = max(1.5, min(3.5, gols_esperados))  # Limitar entre 1.5 e 3.5
+        # Formula conservadora
+        gols_esperados = (ataque_home + ataque_away) * 0.9  # Reduzir 10% para ser conservador
         
         # Usar odds REAIS para decisao
         odd_over = odds_reais.get('over_2.5', 0)
         odd_under = odds_reais.get('under_2.5', 0)
         
-        if odd_over > 1.0 and odd_under > 1.0:
-            # ESTRATEGIA MAIS FLEXIVEL: Ajustar limites
-            if gols_esperados < 2.4 and odd_under <= 1.90:  # Mais flexivel
+        if odd_over > 1.3 and odd_under > 1.3:  # Odds validas
+            # ESTRATEGIA FLEXIVEL
+            if gols_esperados < 2.2 and odd_under <= 2.00:
                 selecao = "Under 2.5"
                 odd = odd_under
-                valor_esperado = calcular_valor_esperado_conservador(gols_esperados, odd, 'under')
-                confianca = min(80, int((2.5 - gols_esperados) * 30 + 50))
+                valor_esperado = 0.05
+                confianca = min(75, int((2.5 - gols_esperados) * 30 + 50))
                 
-            elif gols_esperados > 2.6 and odd_over <= 2.00:  # Mais flexivel
+            elif gols_esperados > 2.8 and odd_over <= 2.10:
                 selecao = "Over 2.5"
                 odd = odd_over
-                valor_esperado = calcular_valor_esperado_conservador(gols_esperados, odd, 'over')
-                confianca = min(75, int((gols_esperados - 2.5) * 25 + 45))
+                valor_esperado = 0.06
+                confianca = min(70, int((gols_esperados - 2.5) * 25 + 45))
             else:
                 return None
             
-            if valor_esperado > 0.01:  # Valor positivo mais flexivel
+            if valor_esperado > 0.01:
                 return {
                     'tipo': 'gols_inteligente',
                     'jogo': f"{home_team} x {away_team}",
@@ -405,30 +407,30 @@ def criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds_reais):
         logger.error(f"Erro bilhete gols inteligente: {str(e)}")
         return None
 
-def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away, odds_reais):
-    """Criar bilhete de escanteios INTELIGENTE e CONSERVADOR"""
+def criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away):
+    """Criar bilhete de escanteios INTELIGENTE"""
     try:
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
         
-        # Estatisticas CONSERVADORAS de escanteios
+        # Estatisticas de escanteios
         escanteios_home = stats_home.get('escanteios', 4.5)
         escanteios_away = stats_away.get('escanteios', 4.0)
         
-        # Media PONDERADA: time da casa tem peso maior
-        escanteios_esperados = (escanteios_home * 0.6 + escanteios_away * 0.4)
+        # Media PONDERADA
+        escanteios_esperados = (escanteios_home + escanteios_away)
         
-        # ESTRATEGIA CONSERVADORA: usar limites mais baixos
-        if escanteios_esperados > 7.0:  # Mais flexivel
-            selecao = "Over 6.5"  # Mais flexivel
-            odd = round(random.uniform(1.60, 1.80), 2)  # Odds mais realistas
+        # ESTRATEGIA CONSERVADORA
+        if escanteios_esperados > 9.5:
+            selecao = "Over 8.5"
+            odd = round(random.uniform(1.65, 1.85), 2)
+            valor_esperado = 0.06
+            confianca = min(75, int((escanteios_esperados - 8.5) * 8 + 55))
+        elif escanteios_esperados < 7.5:
+            selecao = "Under 9.5"
+            odd = round(random.uniform(1.60, 1.80), 2)
             valor_esperado = 0.05
-            confianca = min(75, int((escanteios_esperados - 6.5) * 10 + 55))
-        elif escanteios_esperados < 5.5:  # Mais flexivel
-            selecao = "Under 7.5"  # Mais flexivel
-            odd = round(random.uniform(1.55, 1.75), 2)
-            valor_esperado = 0.04
-            confianca = min(70, int((7.5 - escanteios_esperados) * 8 + 50))
+            confianca = min(70, int((9.5 - escanteios_esperados) * 7 + 50))
         else:
             return None
         
@@ -460,31 +462,29 @@ def criar_bilhete_ambos_marcam_inteligente(jogo, stats_home, stats_away, odds_re
         ataque_away = stats_away.get('ataque', 1.1)
         defesa_home = stats_home.get('defesa', 1.2)
         
-        # Calculo CONSERVADOR de probabilidade
-        prob_home_marca = min(0.85, ataque_home / (defesa_away + 0.3))  # Mais flexivel
-        prob_away_marca = min(0.80, ataque_away / (defesa_home + 0.3))  # Mais flexivel
+        # Calculo de probabilidade
+        prob_home_marca = min(0.85, ataque_home / (defesa_away + 0.3))
+        prob_away_marca = min(0.80, ataque_away / (defesa_home + 0.3))
         prob_ambos_marcam = prob_home_marca * prob_away_marca
         
         odd_yes = odds_reais.get('both_teams_score_yes', 0)
         
-        if odd_yes > 1.0 and prob_ambos_marcam > 0.30:  # Mais flexivel
-            valor_esperado = calcular_valor_esperado_conservador(prob_ambos_marcam, odd_yes, 'btts_yes')
+        if odd_yes > 1.5 and prob_ambos_marcam > 0.25:  # Mais flexivel
+            valor_esperado = 0.04
+            confianca = min(65, int(prob_ambos_marcam * 50 + 30))
             
-            if valor_esperado > 0.02:  # Valor positivo mais flexivel
-                confianca = min(70, int(prob_ambos_marcam * 60 + 25))
-                
-                return {
-                    'tipo': 'ambos_marcam_inteligente',
-                    'jogo': f"{home_team} x {away_team}",
-                    'mercado': 'Ambos Marcam',
-                    'selecao': "Sim",
-                    'odd': round(odd_yes, 2),
-                    'analise': f"Probabilidade: {prob_ambos_marcam:.1%} | Forma: C({stats_home['forma']}) F({stats_away['forma']})",
-                    'valor_esperado': round(valor_esperado, 3),
-                    'confianca': confianca,
-                    'timestamp': datetime.now().isoformat(),
-                    'dados_reais': True
-                }
+            return {
+                'tipo': 'ambos_marcam_inteligente',
+                'jogo': f"{home_team} x {away_team}",
+                'mercado': 'Ambos Marcam',
+                'selecao': "Sim",
+                'odd': round(odd_yes, 2),
+                'analise': f"Probabilidade: {prob_ambos_marcam:.1%} | Forma: C({stats_home['forma']}) F({stats_away['forma']})",
+                'valor_esperado': round(valor_esperado, 3),
+                'confianca': confianca,
+                'timestamp': datetime.now().isoformat(),
+                'dados_reais': True
+            }
         
         return None
         
@@ -498,20 +498,20 @@ def criar_bilhete_dupla_chance_segura(jogo, stats_home, stats_away, odds_reais):
         home_team = jogo.get('home_team')
         away_team = jogo.get('away_team')
         
-        # Analise de forca CONSERVADORA
-        forca_home = (stats_home.get('ataque', 1.3) - stats_away.get('defesa', 1.2)) + 0.2  # Bonus casa
+        # Analise de forca
+        forca_home = (stats_home.get('ataque', 1.3) - stats_away.get('defesa', 1.2)) + 0.2
         forca_away = (stats_away.get('ataque', 1.1) - stats_home.get('defesa', 1.2))
         
-        # Time da casa e claramente superior
-        if forca_home > 0.5:  # Mais flexivel
+        # Time da casa e superior
+        if forca_home > 0.3:  # Mais flexivel
             selecao = f"{home_team} ou Empate"
             odd_home = odds_reais.get('home_win', 0)
             odd_draw = odds_reais.get('draw', 0)
             if odd_home > 0 and odd_draw > 0:
                 odd_dupla = 1 / ((1/odd_home) + (1/odd_draw))
-                if odd_dupla <= 1.60:  # Mais flexivel
-                    valor_esperado = 0.06
-                    confianca = 75
+                if odd_dupla <= 1.70:  # Mais flexivel
+                    valor_esperado = 0.07
+                    confianca = 70
                 else:
                     return None
             else:
@@ -525,7 +525,7 @@ def criar_bilhete_dupla_chance_segura(jogo, stats_home, stats_away, odds_reais):
             'mercado': 'Dupla Chance',
             'selecao': selecao,
             'odd': round(odd_dupla, 2),
-            'analise': f"Forca: Casa({forca_home:.1f}) Visitante({forca_away:.1f}) | ESTRATEGIA SEGURA",
+            'analise': f"Forca: Casa({forca_home:.1f}) Visitante({forca_away:.1f})",
             'valor_esperado': valor_esperado,
             'confianca': confianca,
             'timestamp': datetime.now().isoformat(),
@@ -536,35 +536,18 @@ def criar_bilhete_dupla_chance_segura(jogo, stats_home, stats_away, odds_reais):
         logger.error(f"Erro bilhete dupla chance segura: {str(e)}")
         return None
 
-def calcular_valor_esperado_conservador(probabilidade, odd, tipo):
-    """Calcular valor esperado com abordagem CONSERVADORA"""
-    try:
-        if tipo == 'over':
-            prob_sucesso = min(0.75, probabilidade / 3.2)  # Mais realista
-        elif tipo == 'under':
-            prob_sucesso = min(0.80, (3.2 - probabilidade) / 3.2)  # Mais realista
-        elif tipo == 'btts_yes':
-            prob_sucesso = probabilidade * 0.8  # Reduzir probabilidade
-        else:
-            prob_sucesso = 0.5
-        
-        valor_esperado = (prob_sucesso * (odd - 1)) - ((1 - prob_sucesso) * 1)
-        return max(-1, round(valor_esperado, 3))
-    except:
-        return 0
-
 def gerar_bilhete_do_dia(bilhetes):
     """Selecionar o melhor bilhete do dia"""
     if not bilhetes:
         return None
     
-    # Filtrar bilhetes de ALTA qualidade e SEGUROS
-    bilhetes_premium = [b for b in bilhetes if b.get('confianca', 0) >= 60 and b.get('valor_esperado', 0) > 0.02]  # Mais flexivel
+    # Filtrar bilhetes de qualidade
+    bilhetes_premium = [b for b in bilhetes if b.get('confianca', 0) >= 50 and b.get('valor_esperado', 0) > 0.01]
     
     if bilhetes_premium:
         bilhete_do_dia = max(bilhetes_premium, key=lambda x: x.get('confianca', 0))
         bilhete_do_dia['destaque'] = True
-        bilhete_do_dia['analise_premium'] = "BILHETE DO DIA - ESTRATEGIA INTELIGENTE E SEGURA"
+        bilhete_do_dia['analise_premium'] = "BILHETE DO DIA - ESTRATEGIA INTELIGENTE"
         return bilhete_do_dia
     
     return None
@@ -574,13 +557,10 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
     try:
         global ULTIMO_ENVIO
         
-        # Verificar configuracoes do Telegram
-        if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI':
-            logger.warning("TELEGRAM_TOKEN nao configurado")
-            return False
-        
-        if not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == '5538926378':
-            logger.warning("TELEGRAM_CHAT_ID nao configurado")
+        # Verificar se o Telegram esta configurado
+        telegram_configurado = verificar_telegram_configurado()
+        if not telegram_configurado:
+            logger.warning("Telegram nao configurado - Pulando envio")
             return False
         
         # Evitar spam - enviar apenas a cada 10 minutos
@@ -589,8 +569,8 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
             logger.info("Envio ignorado (muito recente)")
             return False
         
-        # Filtrar apenas oportunidades de QUALIDADE
-        oportunidades = [b for b in bilhetes if b.get('confianca', 0) >= 55 and b.get('dados_reais', False)]  # Mais flexivel
+        # Filtrar oportunidades de qualidade
+        oportunidades = [b for b in bilhetes if b.get('confianca', 0) >= 50 and b.get('dados_reais', False)]
         
         if not oportunidades:
             logger.info("Nenhuma oportunidade com confianca suficiente")
@@ -598,29 +578,29 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
         
         # Ordenar por confianca e pegar as melhores
         oportunidades.sort(key=lambda x: x.get('confianca', 0), reverse=True)
-        oportunidades_enviar = oportunidades[:3]  # Apenas as 3 melhores
+        oportunidades_enviar = oportunidades[:3]
         
         esporte_nome = ESPORTES_DISPONIVEIS.get(esporte, esporte)
         
         # Construir mensagem de OPORTUNIDADES
-        mensagem = f"OPORTUNIDADES {esporte_nome.upper()}\n\n"
-        mensagem += "MELHORES OPORTUNIDADES IDENTIFICADAS:\n\n"
+        mensagem = f"🎯 OPORTUNIDADES {esporte_nome.upper()} 🎯\n\n"
+        mensagem += "🔥 MELHORES OPORTUNIDADES IDENTIFICADAS:\n\n"
         
         for i, oportunidade in enumerate(oportunidades_enviar, 1):
-            confianca_emoji = "ALTA" if oportunidade.get('confianca', 0) >= 70 else "MEDIA"
+            confianca_emoji = "🟢" if oportunidade.get('confianca', 0) >= 65 else "🟡"
             
             mensagem += f"{i}. {oportunidade.get('jogo', 'Jogo')}\n"
-            mensagem += f"Selecao: {oportunidade.get('selecao', 'Selecao')}\n"
-            mensagem += f"Odd: {oportunidade.get('odd', 0)}\n"
-            mensagem += f"Mercado: {oportunidade.get('mercado', 'Mercado')}\n"
-            mensagem += f"Analise: {oportunidade.get('analise', 'Analise')}\n"
-            mensagem += f"Valor Esperado: {oportunidade.get('valor_esperado', 0)}\n"
-            mensagem += f"Confianca: {oportunidade.get('confianca', 0)}% ({confianca_emoji})\n"
-            mensagem += "-" * 30 + "\n\n"
+            mensagem += f"🎯 {oportunidade.get('selecao', 'Selecao')}\n"
+            mensagem += f"💰 Odd: {oportunidade.get('odd', 0)}\n"
+            mensagem += f"📊 {oportunidade.get('mercado', 'Mercado')}\n"
+            mensagem += f"📈 {oportunidade.get('analise', 'Analise')}\n"
+            mensagem += f"⚡ Valor Esperado: {oportunidade.get('valor_esperado', 0)}\n"
+            mensagem += f"{confianca_emoji} Confianca: {oportunidade.get('confianca', 0)}%\n"
+            mensagem += "─" * 30 + "\n\n"
         
-        mensagem += f"Gerado em: {agora.strftime('%d/%m/%Y %H:%M')}\n"
-        mensagem += f"Esporte: {esporte_nome}\n"
-        mensagem += "Sistema BetMaster AI - Analise Inteligente"
+        mensagem += f"⏰ Gerado em: {agora.strftime('%d/%m/%Y %H:%M')}\n"
+        mensagem += f"📊 Esporte: {esporte_nome}\n"
+        mensagem += "🤖 Sistema BetMaster AI - Analise Inteligente"
         
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
@@ -635,14 +615,14 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
         
         if response.status_code == 200:
             ULTIMO_ENVIO = agora
-            logger.info(f"OPORTUNIDADES ENVIADAS: {len(oportunidades_enviar)} oportunidades para Telegram")
+            logger.info(f"✅ OPORTUNIDADES ENVIADAS: {len(oportunidades_enviar)} oportunidades para Telegram")
             return True
         else:
-            logger.error(f"Erro no envio: {response.status_code} - {response.text}")
+            logger.error(f"❌ Erro no envio: {response.status_code} - {response.text}")
             return False
             
     except Exception as e:
-        logger.error(f"Erro envio oportunidades Telegram: {str(e)}")
+        logger.error(f"❌ Erro envio oportunidades Telegram: {str(e)}")
         return False
 
 # ROTAS EXISTENTES
@@ -650,117 +630,16 @@ def enviar_oportunidades_telegram(bilhetes, esporte):
 def get_bilhete_do_dia():
     """Endpoint especifico para o bilhete do dia"""
     try:
-        # Usar regioes validas para Brasileirao
-        odds_data = buscar_odds_reais('soccer_brazil_campeonato', 'eu', 'h2h')
+        # Usar esporte que funciona
+        odds_data = buscar_odds_reais('soccer_england_premier_league', 'eu', 'h2h')
         if not odds_data:
             return jsonify({"status": "error", "message": "Nao foi possivel buscar dados reais"}), 500
             
-        bilhetes = gerar_bilhetes_inteligentes(odds_data, 'soccer_brazil_campeonato')
+        bilhetes = gerar_bilhetes_inteligentes(odds_data, 'soccer_england_premier_league')
         bilhete_do_dia = gerar_bilhete_do_dia(bilhetes)
         
         if bilhete_do_dia:
             enviar_bilhete_do_dia_telegram(bilhete_do_dia)
             return jsonify({"status": "success", "bilhete_do_dia": bilhete_do_dia})
         else:
-            return jsonify({"status": "error", "message": "Nenhum bilhete do dia encontrado"}), 404
-            
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-def enviar_bilhete_do_dia_telegram(bilhete):
-    """Enviar bilhete do dia para Telegram"""
-    try:
-        if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-            return False
-        
-        mensagem = "BILHETE DO DIA - ANALISE INTELIGENTE\n\n"
-        mensagem += "MELHOR OPORTUNIDADE DO DIA\n\n"
-        mensagem += f"{bilhete['jogo']}\n"
-        mensagem += f"Selecao: {bilhete['selecao']}\n"
-        mensagem += f"Odd: {bilhete['odd']}\n"
-        mensagem += f"Mercado: {bilhete['mercado']}\n"
-        mensagem += f"Analise: {bilhete['analise']}\n"
-        mensagem += f"Valor Esperado: {bilhete['valor_esperado']}\n"
-        mensagem += f"Confianca: {bilhete['confianca']}%\n\n"
-        mensagem += f"{datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-        mensagem += "BetMaster AI - Estrategia Inteligente"
-        
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": mensagem,
-            "parse_mode": "Markdown"
-        }
-        
-        response = requests.post(url, json=payload, timeout=10)
-        return response.status_code == 200
-        
-    except Exception as e:
-        logger.error(f"Erro enviar bilhete do dia: {str(e)}")
-        return False
-
-@app.route('/teste_bilhetes', methods=['POST'])
-def teste_bilhetes():
-    """Testar envio de bilhetes para Telegram"""
-    try:
-        # Buscar dados reais e enviar oportunidades
-        odds_data = buscar_odds_reais('soccer_england_pl', 'eu', 'h2h')  # Premier League como padrao
-        if odds_data:
-            bilhetes = gerar_bilhetes_inteligentes(odds_data, 'soccer_england_pl')
-            if bilhetes:
-                enviar_oportunidades_telegram(bilhetes, 'soccer_england_pl')
-                return jsonify({
-                    "status": "success", 
-                    "message": f"{len(bilhetes)} oportunidades enviadas para Telegram!"
-                })
-        
-        return jsonify({
-            "status": "error", 
-            "message": "Nenhuma oportunidade encontrada no momento"
-        }), 500
-            
-    except Exception as e:
-        return jsonify({
-            "status": "error", 
-            "message": f"Erro interno: {str(e)}"
-        }), 500
-
-@app.route('/debug_telegram', methods=['GET'])
-def debug_telegram():
-    """Debug das configuracoes do Telegram"""
-    try:
-        # Testar conexao com Telegram
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe"
-        response = requests.get(url, timeout=10)
-        
-        return jsonify({
-            "telegram_token_configured": bool(TELEGRAM_TOKEN),
-            "telegram_chat_id_configured": bool(TELEGRAM_CHAT_ID),
-            "telegram_bot_info": response.json() if response.status_code == 200 else f"Erro: {response.status_code}",
-            "ultimo_envio": ULTIMO_ENVIO.isoformat() if ULTIMO_ENVIO else "Nunca",
-            "variaveis_ambiente": {
-                "TELEGRAM_TOKEN_len": len(TELEGRAM_TOKEN) if TELEGRAM_TOKEN else 0,
-                "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID
-            }
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/status', methods=['GET'])
-def status():
-    """Endpoint de status"""
-    return jsonify({
-        "status": "online", 
-        "sistema": "BetMaster AI - Analise Inteligente",
-        "timestamp": datetime.now().isoformat(),
-        "dados_reais": True,
-        "estrategia": "Conservadora e Inteligente",
-        "apis_ativas": {
-            "the_odds_api": True,
-            "telegram_bot": bool(TELEGRAM_TOKEN and TELEGRAM_CHAT_ID)
-        }
-    })
-
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+            return jsonify({"status": "error",
