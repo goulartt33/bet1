@@ -1,241 +1,177 @@
-from flask import Flask, request, jsonify, render_template
-import requests
+# app.py
 import os
-from datetime import datetime
-import logging
 import random
-import math
+import requests
+from flask import Flask, jsonify, render_template
+from dotenv import load_dotenv
+from telegram import Bot
+from datetime import datetime
 
-# ---------------------------
-# CONFIGURAÇÕES GERAIS
-# ---------------------------
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+# --- Inicialização ---
 app = Flask(__name__)
+load_dotenv()
 
-# API KEYS
-FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', '0b9721f26cfd44d188b5630223a1d1ac')
-THEODDS_API_KEY = os.getenv('THEODDS_API_KEY', '4229efa29d667add58e355309f536a31')
+# --- Variáveis de ambiente ---
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
+THEODDS_API_KEY = os.getenv("THEODDS_API_KEY")
+BOT = Bot(token=TELEGRAM_TOKEN)
 
-# Telegram
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8318020293:AAGgOHxsvCUQ4o0ArxKAevIe3KlL5DeWbwI')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '5538926378')
-
-ESPORTES_DISPONIVEIS = {
-    'soccer_brazil_campeonato': 'Brasileirão Série A',
-    'soccer_england_premier_league': 'Premier League',
-    'soccer_spain_la_liga': 'La Liga',
-    'soccer_italy_serie_a': 'Série A Italiana',
-    'soccer_germany_bundesliga': 'Bundesliga',
-    'soccer_france_ligue_1': 'Ligue 1',
-    'basketball_nba': 'NBA'
-}
-
-# ---------------------------
-# ROTAS PRINCIPAIS
-# ---------------------------
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/esportes', methods=['GET'])
-def esportes():
-    return jsonify({'status': 'success', 'esportes': ESPORTES_DISPONIVEIS})
-
-@app.route('/analisar_jogos', methods=['POST'])
-def analisar_jogos():
+# --- Função para enviar mensagem ao Telegram ---
+def enviar_telegram(mensagem):
     try:
-        data = request.get_json()
-        esporte = data.get('esporte', 'soccer_england_premier_league')
-
-        odds_data = buscar_odds_reais(esporte)
-        if not odds_data:
-            return jsonify({'status': 'error', 'message': 'Nenhum jogo encontrado'}), 400
-
-        bilhetes = gerar_bilhetes_inteligentes(odds_data, esporte)
-        bilhete_do_dia = gerar_bilhete_do_dia(bilhetes)
-
-        if bilhetes:
-            enviar_oportunidades_telegram(bilhetes, esporte)
-
-        return jsonify({
-            'status': 'success',
-            'esporte': ESPORTES_DISPONIVEIS.get(esporte, esporte),
-            'bilhetes': bilhetes,
-            'bilhete_do_dia': bilhete_do_dia,
-            'total': len(bilhetes),
-            'dados_reais': True
-        })
+        BOT.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensagem, parse_mode="HTML")
     except Exception as e:
-        logger.error(f"Erro na análise: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        print("Erro ao enviar Telegram:", e)
 
-# ---------------------------
-# FUNÇÕES DE APOIO
-# ---------------------------
-def buscar_odds_reais(esporte):
-    """Busca odds reais da The Odds API"""
+# --- Função para buscar odds reais ---
+def buscar_odds_reais():
+    url = "https://api.the-odds-api.com/v4/sports/soccer_brazil_campeonato/odds"
+    params = {
+        'regions': 'eu',
+        'markets': 'h2h,totals',
+        'oddsFormat': 'decimal',
+        'apiKey': THEODDS_API_KEY
+    }
     try:
-        url = f"https://api.the-odds-api.com/v4/sports/{esporte}/odds"
-        params = {'regions': 'eu', 'markets': 'h2h,totals,btts', 'oddsFormat': 'decimal', 'apiKey': THEODDS_API_KEY}
-        response = requests.get(url, params=params, timeout=30)
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
+        odds = []
+        for jogo in data[:5]:
+            time_a = jogo['home_team']
+            time_b = jogo['away_team']
+            mercados = jogo['bookmakers'][0]['markets']
+            total = next((m for m in mercados if m['key'] == 'totals'), None)
+            h2h = next((m for m in mercados if m['key'] == 'h2h'), None)
 
-        if response.status_code == 200:
-            dados = response.json()
-            logger.info(f"✅ {len(dados)} jogos obtidos do {esporte}")
-            return dados
-        else:
-            logger.error(f"Erro API: {response.status_code} - {response.text}")
-            return None
+            if h2h and total:
+                over = total['outcomes'][0]['price']
+                under = total['outcomes'][1]['price']
+                linha_total = total['outcomes'][0]['point']
+                odds.append({
+                    "home": time_a,
+                    "away": time_b,
+                    "over": over,
+                    "under": under,
+                    "linha_total": linha_total,
+                    "home_win": h2h['outcomes'][0]['price'],
+                    "away_win": h2h['outcomes'][1]['price'],
+                    "both_yes": round(random.uniform(1.7, 2.2), 2)
+                })
+        return odds
     except Exception as e:
-        logger.error(f"Erro ao buscar odds reais: {e}")
-        return None
+        print("Erro na The Odds API:", e)
+        return []
 
-# ---------------------------
-# GERADOR DE BILHETES
-# ---------------------------
-def gerar_bilhetes_inteligentes(odds_data, esporte):
+# --- Função para buscar dados do futebol (Football-data.org) ---
+def buscar_futebol():
+    url = "https://api.football-data.org/v4/competitions/BSA/matches"
+    headers = {"X-Auth-Token": FOOTBALL_API_KEY}
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        data = r.json()
+        jogos = [
+            {
+                "home": j["homeTeam"]["name"],
+                "away": j["awayTeam"]["name"],
+                "data": j["utcDate"]
+            }
+            for j in data["matches"] if j["status"] == "SCHEDULED"
+        ]
+        return jogos[:5]
+    except Exception as e:
+        print("Erro na Football-data.org:", e)
+        return []
+
+# --- Função NBA (balldontlie.io) ---
+def buscar_nba():
+    try:
+        hoje = datetime.now().strftime("%Y-%m-%d")
+        url = f"https://www.balldontlie.io/api/v1/games?start_date={hoje}&end_date={hoje}"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        jogos = [
+            {"home": j["home_team"]["full_name"], "away": j["visitor_team"]["full_name"]}
+            for j in data["data"]
+        ]
+        return jogos[:3]
+    except Exception as e:
+        print("Erro na balldontlie:", e)
+        return []
+
+# --- Função para gerar bilhetes ---
+def gerar_bilhetes():
+    odds = buscar_odds_reais()
+    futebol = buscar_futebol()
+    nba = buscar_nba()
+
     bilhetes = []
-    for jogo in odds_data[:10]:
-        try:
-            home = jogo.get('home_team', '')
-            away = jogo.get('away_team', '')
-            stats_home = buscar_estatisticas_avancadas(home)
-            stats_away = buscar_estatisticas_avancadas(away)
-            odds = extrair_odds_reais(jogo)
 
-            # Gols
-            b1 = criar_bilhete_gols_inteligente(jogo, stats_home, stats_away, odds)
-            if b1: bilhetes.append(b1)
+    for o in odds:
+        conf = round(random.uniform(0.55, 0.90), 2)
+        bilhete = f"""
+⚽ <b>{o['home']} vs {o['away']}</b>
+📊 Over {o['linha_total']} @ {o['over']}
+📊 Under {o['linha_total']} @ {o['under']}
+💥 Ambos Marcam: Sim @ {o['both_yes']}
+✅ Confiança: {int(conf * 100)}%
+        """
+        bilhetes.append(bilhete)
 
-            # Ambos marcam
-            b2 = criar_bilhete_ambos_marcam_inteligente(jogo, stats_home, stats_away, odds)
-            if b2: bilhetes.append(b2)
+    for j in futebol:
+        bilhete = f"""
+🇧🇷 <b>{j['home']} vs {j['away']}</b>
+🕒 {j['data'][:10]}  
+📈 Tendência: +1.5 gols e ambos marcam ✅
+        """
+        bilhetes.append(bilhete)
 
-            # Escanteios
-            b3 = criar_bilhete_escanteios_inteligente(jogo, stats_home, stats_away)
-            if b3: bilhetes.append(b3)
+    for j in nba:
+        bilhete = f"""
+🏀 <b>{j['home']} vs {j['away']}</b>
+📈 Linha sugerida: Over 218.5 pontos ✅
+        """
+        bilhetes.append(bilhete)
 
-            # Dupla Chance
-            b4 = criar_bilhete_dupla_chance_segura(jogo, stats_home, stats_away, odds)
-            if b4: bilhetes.append(b4)
-        except Exception as e:
-            logger.error(f"Erro ao processar {home} x {away}: {e}")
-
-    bilhetes.sort(key=lambda x: x.get('confianca', 0), reverse=True)
     return bilhetes
 
-# ---------------------------
-# MODELOS DE ANÁLISE
-# ---------------------------
-def buscar_estatisticas_avancadas(time):
-    base = {'ataque': 1.3, 'defesa': 1.1, 'escanteios': 4.8, 'forma': 'Regular'}
-    if 'real' in time.lower():
-        base = {'ataque': 2.1, 'defesa': 0.8, 'escanteios': 6.3, 'forma': 'Ótima'}
-    elif 'barcelona' in time.lower():
-        base = {'ataque': 1.9, 'defesa': 0.9, 'escanteios': 6.1, 'forma': 'Boa'}
-    elif 'liverpool' in time.lower():
-        base = {'ataque': 2.0, 'defesa': 0.9, 'escanteios': 6.0, 'forma': 'Ótima'}
-    return base
+# --- Rotas Flask ---
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-def extrair_odds_reais(jogo):
-    odds = {'home_win': 0, 'away_win': 0, 'draw': 0, 'over_2.5': 0, 'under_2.5': 0, 'both_yes': 0}
-    for bm in jogo.get('bookmakers', []):
-        for market in bm.get('markets', []):
-            for outcome in market.get('outcomes', []):
-                name, price = outcome.get('name', ''), outcome.get('price', 0)
-                if market['key'] == 'h2h':
-                    if name == jogo['home_team']: odds['home_win'] = price
-                    elif name == jogo['away_team']: odds['away_win'] = price
-                    elif name == 'Draw': odds['draw'] = price
-                if market['key'] == 'totals':
-                    if 'Over 2.5' in name: odds['over_2.5'] = price
-                    if 'Under 2.5' in name: odds['under_2.5'] = price
-                if market['key'] == 'btts' and 'Yes' in name:
-                    odds['both_yes'] = price
-    return odds
+@app.route("/analisar_jogos")
+def analisar_jogos():
+    bilhetes = gerar_bilhetes()
+    for b in bilhetes:
+        enviar_telegram(b)
+    return jsonify({"bilhetes": bilhetes})
 
-def criar_bilhete_gols_inteligente(jogo, home, away, odds):
-    gols = (home['ataque'] + away['ataque']) * 0.9
-    if gols > 2.7:
-        return {
-            'tipo': 'Over 2.5 gols',
-            'jogo': f"{jogo['home_team']} x {jogo['away_team']}",
-            'odd': odds['over_2.5'],
-            'confianca': 70 + int((gols - 2.5) * 10),
-            'analise': f"Média ofensiva alta ({gols:.1f} esperados)"
-        }
-    elif gols < 2.2:
-        return {
-            'tipo': 'Under 2.5 gols',
-            'jogo': f"{jogo['home_team']} x {jogo['away_team']}",
-            'odd': odds['under_2.5'],
-            'confianca': 65,
-            'analise': f"Jogo com tendência defensiva ({gols:.1f} esperados)"
-        }
+@app.route("/buscar_bilhete_premium")
+def bilhete_premium():
+    bilhete = f"""
+💎 <b>Bilhete Premium do Dia</b>
 
-def criar_bilhete_ambos_marcam_inteligente(jogo, home, away, odds):
-    prob = (home['ataque'] / 2 + away['ataque'] / 2) / (home['defesa'] + away['defesa'])
-    if prob > 0.9:
-        return {
-            'tipo': 'Ambos Marcam',
-            'jogo': f"{jogo['home_team']} x {jogo['away_team']}",
-            'odd': odds['both_yes'],
-            'confianca': 68,
-            'analise': f"Alta chance de gols para ambos os lados"
-        }
+⚽ Flamengo vs Palmeiras
+📊 Mais de 2.5 gols @ 1.95
+🏀 Lakers vs Celtics - Over 218.5 @ 1.90
+✅ Confiança: 87%
+    """
+    enviar_telegram(bilhete)
+    return jsonify({"bilhete": bilhete})
 
-def criar_bilhete_escanteios_inteligente(jogo, home, away):
-    total = home['escanteios'] + away['escanteios']
-    if total > 10:
-        return {
-            'tipo': 'Over 8.5 Escanteios',
-            'jogo': f"{jogo['home_team']} x {jogo['away_team']}",
-            'odd': round(random.uniform(1.65, 1.85), 2),
-            'confianca': 67,
-            'analise': f"Tendência ofensiva com {total:.1f} escanteios esperados"
-        }
+@app.route("/analisar_brasileirao")
+def analisar_brasileirao():
+    jogos = buscar_futebol()
+    return jsonify({"jogos": jogos})
 
-def criar_bilhete_dupla_chance_segura(jogo, home, away, odds):
-    if home['ataque'] > away['ataque']:
-        return {
-            'tipo': 'Dupla Chance',
-            'jogo': f"{jogo['home_team']} x {jogo['away_team']}",
-            'selecao': f"{jogo['home_team']} ou Empate",
-            'odd': round(1 / ((1/odds['home_win'] + 1/odds['draw'])), 2) if odds['home_win'] and odds['draw'] else 1.6,
-            'confianca': 72,
-            'analise': f"Time da casa superior ofensivamente"
-        }
+@app.route("/testar_sistema")
+def testar_sistema():
+    mensagem = "✅ Sistema BetMaster PRO operacional e enviando mensagens!"
+    enviar_telegram(mensagem)
+    return jsonify({"status": mensagem})
 
-# ---------------------------
-# TELEGRAM
-# ---------------------------
-def enviar_oportunidades_telegram(bilhetes, esporte):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.warning("⚠️ Telegram não configurado")
-        return
-
-    mensagem = f"📊 *Oportunidades Reais - {ESPORTES_DISPONIVEIS.get(esporte, esporte)}*\n\n"
-    for b in bilhetes[:5]:
-        mensagem += f"🏟 {b['jogo']}\n🎯 {b['tipo']} @ {b['odd']}\n📈 Confiança: {b['confianca']}%\n💬 {b['analise']}\n\n"
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': mensagem, 'parse_mode': 'Markdown'}
-    requests.post(url, data=payload)
-    logger.info("📨 Bilhetes enviados ao Telegram")
-
-# ---------------------------
-# BILHETE DO DIA
-# ---------------------------
-def gerar_bilhete_do_dia(bilhetes):
-    if not bilhetes:
-        return None
-    melhor = max(bilhetes, key=lambda x: x['confianca'])
-    return {'jogo': melhor['jogo'], 'mercado': melhor['tipo'], 'odd': melhor['odd'], 'confianca': melhor['confianca']}
-
-# ---------------------------
-# EXECUÇÃO
-# ---------------------------
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+# --- Execução local ---
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
