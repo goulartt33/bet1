@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_executor import Executor
 import requests
 import os
 from dotenv import load_dotenv
@@ -6,12 +7,14 @@ from telegram import Bot
 from telegram.error import TelegramError
 from datetime import datetime
 import logging
+import asyncio
 
 # -------------------------------
 # Configurações iniciais
 # -------------------------------
 load_dotenv()
 app = Flask(__name__)
+executor = Executor(app)
 logging.basicConfig(level=logging.INFO)
 
 # Tokens e chaves de API
@@ -30,9 +33,9 @@ bot = Bot(token=TELEGRAM_TOKEN)
 # Funções auxiliares
 # -------------------------------
 
-def enviar_telegram(mensagem):
+async def enviar_telegram(mensagem):
     try:
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensagem, parse_mode="HTML")
+        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensagem, parse_mode="HTML")
         logging.info("✅ Mensagem enviada ao Telegram com sucesso!")
     except TelegramError as e:
         logging.error(f"❌ Erro ao enviar mensagem: {e}")
@@ -126,7 +129,7 @@ def index():
     return render_template("index.html")
 
 @app.route("/analisar_jogos", methods=["GET", "POST"])
-def analisar_jogos():
+async def analisar_jogos():
     logging.info("🔍 Iniciando análise de jogos...")
     jogos = buscar_odds()
 
@@ -144,14 +147,14 @@ def analisar_jogos():
 
     # Envia para Telegram
     if mensagens:
-        enviar_telegram("\n\n".join(mensagens))
+        executor.submit(asyncio.run, enviar_telegram("\n\n".join(mensagens)))
     else:
         logging.warning("Nenhum bilhete gerado para enviar ao Telegram.")
 
     return jsonify({"bilhetes": bilhetes})
 
 @app.route("/buscar_bilhete_premium")
-def bilhete_premium():
+async def bilhete_premium():
     """Retorna o bilhete do dia"""
     jogos = buscar_odds()
     if not jogos:
@@ -160,7 +163,7 @@ def bilhete_premium():
     jogo = jogos[0]
     bilhete = gerar_bilhete(jogo)
     if bilhete:
-        enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete)
+        executor.submit(asyncio.run, enviar_telegram("🔥 <b>Bilhete Premium do Dia</b>\n\n" + bilhete))
         return jsonify({"bilhete": bilhete})
     else:
         return jsonify({"erro": "Erro ao gerar o bilhete premium."}), 400
