@@ -1,9 +1,7 @@
 from flask import Flask, jsonify, request, render_template_string
 import os
 import httpx
-import asyncio
-from telegram import Bot
-from telegram.error import TelegramError
+import requests  # Vou usar requests em vez de httpx para o Telegram
 from datetime import datetime, timedelta
 import json
 
@@ -16,14 +14,27 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 THE_ODDS_API_KEY = os.getenv("THE_ODDS_API_KEY")
 
-# Criar uma única instância do bot para evitar pool timeout
-bot_instance = None
-
-def get_bot():
-    global bot_instance
-    if bot_instance is None:
-        bot_instance = Bot(token=TELEGRAM_TOKEN)
-    return bot_instance
+# Função SIMPLES para enviar mensagens no Telegram (sem async)
+def enviar_telegram(mensagem):
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': mensagem,
+            'parse_mode': 'HTML'
+        }
+        
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print("✅ Mensagem enviada para Telegram")
+            return True
+        else:
+            print(f"❌ Erro Telegram API: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Erro ao enviar para Telegram: {e}")
+        return False
 
 # ROTA RAIZ PARA SERVIR O HTML
 @app.route('/')
@@ -59,18 +70,24 @@ def home():
             .form-group { display: flex; flex-direction: column; gap: 8px; }
             label { font-weight: 700; color: #0c2461; font-size: 1.1rem; }
             select, button { padding: 15px 20px; border: 2px solid #e1e5e9; border-radius: 12px; font-size: 16px; }
-            button { background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%); color: white; border: none; cursor: pointer; }
-            button:hover { transform: translateY(-2px); }
+            button { background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%); color: white; border: none; cursor: pointer; font-weight: 600; }
+            button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
             .btn-telegram { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
             .btn-destaque { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
             .results { max-height: 600px; overflow-y: auto; }
-            .bilhete-item { border: 2px solid #e1e5e9; border-radius: 15px; padding: 20px; margin-bottom: 15px; }
+            .bilhete-item { 
+                border: 2px solid #e1e5e9; border-radius: 15px; padding: 20px; margin-bottom: 15px; 
+                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            }
+            .bilhete-destaque { border-color: #e74c3c; background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%); }
             .loading { display: none; text-align: center; padding: 40px; }
             .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #0c2461; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .status { padding: 10px; border-radius: 8px; margin: 10px 0; text-align: center; }
+            .status { padding: 12px; border-radius: 8px; margin: 10px 0; text-align: center; font-weight: 600; }
             .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .status-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+            .esporte-title { color: white; text-align: center; margin-bottom: 10px; font-size: 1.2rem; }
         </style>
     </head>
     <body>
@@ -81,6 +98,8 @@ def home():
                 <p class="subtitle">Sistema Inteligente - Todos Esportes Ativos</p>
                 <div id="statusMessage"></div>
             </div>
+
+            <div class="esporte-title" id="esporteTitle">⚽ Analisando Futebol</div>
 
             <div class="dashboard">
                 <div class="card controls">
@@ -100,13 +119,16 @@ def home():
                 </div>
 
                 <div class="card results">
-                    <h3>📈 Resultados - <span id="esporteAtual">Futebol</span></h3>
+                    <h3>📈 Resultados</h3>
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
-                        <p>Analisando dados...</p>
+                        <p>Analisando dados esportivos...</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                            Consultando APIs • Processando estatísticas • Gerando insights
+                        </p>
                     </div>
                     <div id="resultadosContainer">
-                        <p>Selecione um esporte e clique em "Analisar Jogos"</p>
+                        <p>Selecione um esporte e clique em "Analisar Jogos" para começar</p>
                     </div>
                 </div>
             </div>
@@ -124,16 +146,16 @@ def home():
                 const loading = document.getElementById('loading');
                 const resultadosContainer = document.getElementById('resultadosContainer');
                 const esporte = document.getElementById('esporte').value;
-                const esporteAtual = document.getElementById('esporteAtual');
+                const esporteTitle = document.getElementById('esporteTitle');
                 
-                // Atualizar nome do esporte atual
+                // Atualizar título do esporte
                 const esporteNomes = {
-                    'soccer': 'Futebol',
-                    'basketball_nba': 'NBA', 
-                    'americanfootball_nfl': 'NFL',
-                    'baseball_mlb': 'MLB'
+                    'soccer': '⚽ Futebol',
+                    'basketball_nba': '🏀 NBA', 
+                    'americanfootball_nfl': '🏈 NFL',
+                    'baseball_mlb': '⚾ MLB'
                 };
-                esporteAtual.textContent = esporteNomes[esporte];
+                esporteTitle.textContent = `🎯 Analisando ${esporteNomes[esporte]}`;
                 
                 analisarBtn.disabled = true;
                 analisarBtn.innerHTML = '⏳ Analisando...';
@@ -144,7 +166,7 @@ def home():
                     const response = await fetch('/analisar_jogos', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({esporte: esporte, regiao: 'eu', mercado: 'h2h'})
+                        body: JSON.stringify({esporte: esporte})
                     });
                     
                     const data = await response.json();
@@ -153,18 +175,20 @@ def home():
                         const bilhetes = data.data.bilhetes;
                         if (bilhetes.length > 0) {
                             resultadosContainer.innerHTML = bilhetes.map(bilhete => `
-                                <div class="bilhete-item" style="border-left: 5px solid ${bilhete.destaque ? '#e74c3c' : '#0c2461'}">
+                                <div class="bilhete-item ${bilhete.destaque ? 'bilhete-destaque' : ''}">
                                     <h4>${bilhete.jogo}</h4>
-                                    <p><strong>${bilhete.selecao}</strong> @ ${bilhete.odd}</p>
-                                    <p>${bilhete.analise}</p>
-                                    <p><small>Confiança: ${bilhete.confianca}% | ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}</small></p>
-                                    ${bilhete.destaque ? '<p style="color: #e74c3c; font-weight: bold;">⭐ BILHETE DO DIA</p>' : ''}
+                                    <p><strong>🎯 ${bilhete.selecao}</strong></p>
+                                    <p>💰 Odd: <strong>${bilhete.odd}</strong></p>
+                                    <p>📊 Confiança: <strong>${bilhete.confianca}%</strong></p>
+                                    <p>💡 ${bilhete.analise}</p>
+                                    <p><small>⏰ ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}</small></p>
+                                    ${bilhete.destaque ? '<p style="color: #e74c3c; font-weight: bold; text-align: center;">🔥 BILHETE DO DIA</p>' : ''}
                                 </div>
                             `).join('');
-                            showStatus(`✅ Encontrados ${bilhetes.length} bilhetes para ${esporteNomes[esporte]}`);
+                            showStatus(`✅ Encontrados ${bilhetes.length} bilhetes para ${esporteNomes[esporte]}`, 'success');
                         } else {
-                            resultadosContainer.innerHTML = '<p>Nenhum jogo encontrado para hoje.</p>';
-                            showStatus('⚠️ Nenhum jogo encontrado para a data de hoje', 'error');
+                            resultadosContainer.innerHTML = '<p>Nenhum jogo encontrado para hoje. Mostrando exemplo...</p>';
+                            showStatus('⚠️ Nenhum jogo ao vivo encontrado - Mostrando análise exemplar', 'info');
                         }
                     } else {
                         resultadosContainer.innerHTML = `<p>Erro: ${data.message}</p>`;
@@ -182,11 +206,15 @@ def home():
 
             async function buscarBilheteDoDia() {
                 try {
-                    showStatus('⏳ Buscando melhor bilhete do dia...', 'success');
+                    showStatus('⏳ Buscando o melhor bilhete do dia...', 'info');
                     const response = await fetch('/bilhete_do_dia', {method: 'POST'});
                     const data = await response.json();
                     if (data.status === 'success') {
-                        showStatus('✅ Bilhete do dia processado! Verifique o Telegram.', 'success');
+                        if (data.enviado_telegram) {
+                            showStatus('✅ Bilhete do dia encontrado e enviado para o Telegram!', 'success');
+                        } else {
+                            showStatus('✅ Bilhete do dia encontrado, mas erro ao enviar para Telegram', 'error');
+                        }
                         // Atualiza a lista automaticamente
                         setTimeout(analisarJogos, 2000);
                     } else {
@@ -199,7 +227,7 @@ def home():
 
             async function testarTelegram() {
                 try {
-                    showStatus('⏳ Enviando teste para Telegram...', 'success');
+                    showStatus('⏳ Enviando mensagem de teste para Telegram...', 'info');
                     const response = await fetch('/teste_telegram', {method: 'POST'});
                     const data = await response.json();
                     if (data.status === 'success') {
@@ -216,33 +244,13 @@ def home():
             window.addEventListener('load', function() {
                 setTimeout(analisarJogos, 1000);
             });
+
+            // Atualizar ao mudar esporte
+            document.getElementById('esporte').addEventListener('change', analisarJogos);
         </script>
     </body>
     </html>
     """
-
-# Função assíncrona para enviar mensagens no Telegram (CORRIGIDA)
-async def enviar_telegram_async(mensagem):
-    try:
-        bot = get_bot()
-        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensagem)
-        return True
-    except TelegramError as e:
-        print(f"Erro Telegram: {e}")
-        return False
-
-# Função síncrona wrapper para evitar problemas de event loop
-def enviar_telegram(mensagem):
-    try:
-        # Criar novo event loop para cada chamada
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(enviar_telegram_async(mensagem))
-        loop.close()
-        return result
-    except Exception as e:
-        print(f"Erro no event loop: {e}")
-        return False
 
 # Buscar jogos de futebol
 def buscar_jogos_futebol():
@@ -465,6 +473,19 @@ def gerar_exemplos(esporte):
                 "destaque": True,
                 "timestamp": datetime.utcnow().isoformat(),
                 "selecao": "Real Madrid - Vitória"
+            },
+            {
+                "esporte": "futebol",
+                "jogo": "Manchester City vs Liverpool",
+                "timeA": "Manchester City",
+                "timeB": "Liverpool", 
+                "competicao": "Premier League",
+                "analise": "City invicto em casa, Liverpool irregular fora",
+                "odd": "1.95",
+                "confianca": 72,
+                "destaque": False,
+                "timestamp": datetime.utcnow().isoformat(),
+                "selecao": "Manchester City - Vitória"
             }
         ],
         "basketball_nba": [
@@ -523,7 +544,7 @@ def bilhete_do_dia():
         melhor_bilhete = None
         melhor_confianca = 0
         
-        for esporte in ['soccer', 'basketball_nba', 'americanfootball_nfl']:
+        for esporte in ['soccer', 'basketball_nba', 'americanfootball_nfl', 'baseball_mlb']:
             bilhetes = gerar_bilhetes_esporte(esporte)
             for bilhete in bilhetes:
                 if bilhete['confianca'] > melhor_confianca:
@@ -533,14 +554,15 @@ def bilhete_do_dia():
         if melhor_bilhete:
             # Preparar mensagem para Telegram
             mensagem = (
-                f"🔥 BILHETE DO DIA 🔥\n"
-                f"🏆 {melhor_bilhete['competicao']}\n"
-                f"⚔️ {melhor_bilhete['jogo']}\n"
-                f"🎯 {melhor_bilhete['selecao']}\n"
-                f"💰 Odd: {melhor_bilhete['odd']}\n"
-                f"📊 Confiança: {melhor_bilhete['confianca']}%\n"
-                f"💡 {melhor_bilhete['analise']}\n"
-                f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}"
+                f"🔥 <b>BILHETE DO DIA - BETMASTER AI</b> 🔥\n\n"
+                f"🏆 <b>{melhor_bilhete['competicao']}</b>\n"
+                f"⚔️ <b>{melhor_bilhete['jogo']}</b>\n\n"
+                f"🎯 <b>{melhor_bilhete['selecao']}</b>\n"
+                f"💰 <b>Odd: {melhor_bilhete['odd']}</b>\n"
+                f"📊 <b>Confiança: {melhor_bilhete['confianca']}%</b>\n\n"
+                f"💡 {melhor_bilhete['analise']}\n\n"
+                f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}\n"
+                f"🤖 <i>Gerado por BetMaster AI</i>"
             )
             
             # Enviar para Telegram
@@ -550,7 +572,7 @@ def bilhete_do_dia():
                 "status": "success",
                 "bilhete_do_dia": melhor_bilhete,
                 "enviado_telegram": telegram_success,
-                "message": f"Melhor bilhete encontrado: {melhor_bilhete['jogo']} - Confiança {melhor_bilhete['confianca']}%"
+                "message": f"Melhor bilhete: {melhor_bilhete['jogo']} - Confiança {melhor_bilhete['confianca']}%"
             })
         else:
             return jsonify({
@@ -567,12 +589,16 @@ def bilhete_do_dia():
 def teste_telegram():
     try:
         mensagem = (
-            "🧪 TESTE BETMASTER AI 🧪\n"
-            "✅ Sistema funcionando perfeitamente!\n"
-            "🤖 Todos os esportes ativos\n"
-            "⚽ Futebol | 🏀 NBA | 🏈 NFL | ⚾ MLB\n"
-            "🎯 Análise em tempo real\n"
-            f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}"
+            "🧪 <b>TESTE BETMASTER AI</b> 🧪\n\n"
+            "✅ <b>Sistema funcionando perfeitamente!</b>\n\n"
+            "🤖 <b>Esportes Ativos:</b>\n"
+            "⚽ Futebol\n"
+            "🏀 NBA\n" 
+            "🏈 NFL\n"
+            "⚾ MLB\n\n"
+            "🎯 <b>Análise em tempo real</b>\n"
+            f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}\n\n"
+            "🚀 <i>Pronto para gerar bilhetes!</i>"
         )
         
         success = enviar_telegram(mensagem)
