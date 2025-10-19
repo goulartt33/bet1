@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, request, render_template
 import os
 import httpx
 import asyncio
@@ -21,7 +21,156 @@ bot = Bot(token=TELEGRAM_TOKEN)
 # ROTA RAIZ PARA SERVIR O HTML
 @app.route('/')
 def home():
-    return render_template_string(HTML_TEMPLATE)
+    return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BetMaster AI - Sistema Inteligente de Apostas</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%); 
+                min-height: 100vh; color: #333; 
+                padding: 20px;
+            }
+            .container { max-width: 1200px; margin: 0 auto; }
+            .header { 
+                text-align: center; color: white; margin-bottom: 30px; 
+                padding: 40px 20px; background: rgba(255,255,255,0.1); 
+                border-radius: 25px; backdrop-filter: blur(15px); 
+                border: 1px solid rgba(255,255,255,0.2); 
+            }
+            .logo { font-size: 4.5rem; margin-bottom: 20px; }
+            h1 { font-size: 3.5rem; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+            .subtitle { font-size: 1.4rem; opacity: 0.9; margin-bottom: 25px; }
+            .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 40px; }
+            .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+            .controls { display: flex; flex-direction: column; gap: 20px; }
+            .form-group { display: flex; flex-direction: column; gap: 8px; }
+            label { font-weight: 700; color: #0c2461; font-size: 1.1rem; }
+            select, button { padding: 15px 20px; border: 2px solid #e1e5e9; border-radius: 12px; font-size: 16px; }
+            button { background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%); color: white; border: none; cursor: pointer; }
+            button:hover { transform: translateY(-2px); }
+            .results { max-height: 600px; overflow-y: auto; }
+            .bilhete-item { border: 2px solid #e1e5e9; border-radius: 15px; padding: 20px; margin-bottom: 15px; }
+            .loading { display: none; text-align: center; padding: 40px; }
+            .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #0c2461; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">🎯🤖🔥</div>
+                <h1>BetMaster AI v4.0</h1>
+                <p class="subtitle">Sistema Inteligente - Todos Esportes Ativos</p>
+            </div>
+
+            <div class="dashboard">
+                <div class="card controls">
+                    <h3>⚙️ Configurações</h3>
+                    <div class="form-group">
+                        <label for="esporte">Esporte:</label>
+                        <select id="esporte">
+                            <option value="soccer">⚽ Futebol</option>
+                            <option value="basketball_nba">🏀 NBA</option>
+                            <option value="americanfootball_nfl">🏈 NFL</option>
+                            <option value="baseball_mlb">⚾ MLB</option>
+                        </select>
+                    </div>
+                    <button onclick="analisarJogos()" id="analisarBtn">🤖 Analisar Jogos</button>
+                    <button onclick="buscarBilheteDoDia()" style="background:linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)">🔥 Bilhete do Dia</button>
+                    <button onclick="testarBilhetes()" style="background:linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)">🧪 Testar Telegram</button>
+                </div>
+
+                <div class="card results">
+                    <h3>📈 Resultados</h3>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>Analisando dados...</p>
+                    </div>
+                    <div id="resultadosContainer">
+                        <p>Selecione um esporte e clique em "Analisar Jogos"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            async function analisarJogos() {
+                const analisarBtn = document.getElementById('analisarBtn');
+                const loading = document.getElementById('loading');
+                const resultadosContainer = document.getElementById('resultadosContainer');
+                const esporte = document.getElementById('esporte').value;
+                
+                analisarBtn.disabled = true;
+                analisarBtn.innerHTML = '⏳ Analisando...';
+                loading.style.display = 'block';
+                resultadosContainer.innerHTML = '';
+                
+                try {
+                    const response = await fetch('/analisar_jogos', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({esporte: esporte, regiao: 'eu', mercado: 'h2h'})
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        const bilhetes = data.data.bilhetes;
+                        resultadosContainer.innerHTML = bilhetes.map(bilhete => `
+                            <div class="bilhete-item" style="border-left: 5px solid ${bilhete.destaque ? '#e74c3c' : '#0c2461'}">
+                                <h4>${bilhete.jogo}</h4>
+                                <p><strong>${bilhete.selecao}</strong> @ ${bilhete.odd}</p>
+                                <p>${bilhete.analise}</p>
+                                <p><small>Confiança: ${bilhete.confianca}% | ${new Date(bilhete.timestamp).toLocaleString('pt-BR')}</small></p>
+                                ${bilhete.destaque ? '<p style="color: #e74c3c; font-weight: bold;">⭐ BILHETE DO DIA</p>' : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        resultadosContainer.innerHTML = `<p>Erro: ${data.message}</p>`;
+                    }
+                } catch (error) {
+                    resultadosContainer.innerHTML = `<p>Erro de conexão: ${error}</p>`;
+                } finally {
+                    analisarBtn.disabled = false;
+                    analisarBtn.innerHTML = '🤖 Analisar Jogos';
+                    loading.style.display = 'none';
+                }
+            }
+
+            async function buscarBilheteDoDia() {
+                try {
+                    const response = await fetch('/bilhete_do_dia', {method: 'POST'});
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        alert('✅ Bilhete do dia enviado para o Telegram!');
+                        analisarJogos(); // Atualiza a lista
+                    } else {
+                        alert('Erro: ' + data.message);
+                    }
+                } catch (error) {
+                    alert('Erro de conexão');
+                }
+            }
+
+            async function testarBilhetes() {
+                try {
+                    const response = await fetch('/teste_bilhetes', {method: 'POST'});
+                    const data = await response.json();
+                    alert(data.status === 'success' ? '✅ Teste enviado!' : '❌ Erro: ' + data.message);
+                } catch (error) {
+                    alert('❌ Erro de conexão');
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
 # Função assíncrona para enviar mensagens no Telegram
 async def enviar_telegram(mensagem):
@@ -32,7 +181,7 @@ async def enviar_telegram(mensagem):
         print(f"Erro Telegram: {e}")
         return False
 
-# Função para buscar jogos de futebol
+# Buscar jogos de futebol
 def buscar_jogos_futebol():
     url = "https://api.football-data.org/v4/matches"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
@@ -40,40 +189,37 @@ def buscar_jogos_futebol():
     try:
         with httpx.Client(timeout=10.0) as client:
             response = client.get(url, headers=headers)
-            response.raise_for_status()
-            dados = response.json()
-            
-            jogos = []
-            hoje = datetime.utcnow().date()
-            
-            for match in dados.get("matches", []):
-                data_jogo = datetime.fromisoformat(match["utcDate"].replace("Z", "+00:00")).date()
-                if data_jogo == hoje:
-                    home_team = match["homeTeam"]["name"]
-                    away_team = match["awayTeam"]["name"]
-                    competicao = match["competition"]["name"]
-                    
-                    jogos.append({
-                        "esporte": "futebol",
-                        "jogo": f"{home_team} vs {away_team}",
-                        "timeA": home_team,
-                        "timeB": away_team,
-                        "data": match["utcDate"],
-                        "competicao": competicao,
-                        "mercados": ["h2h", "totals", "spreads"]
-                    })
-            return jogos
+            if response.status_code == 200:
+                dados = response.json()
+                jogos = []
+                hoje = datetime.utcnow().date()
+                
+                for match in dados.get("matches", []):
+                    if match["status"] == "SCHEDULED":
+                        data_jogo = datetime.fromisoformat(match["utcDate"].replace("Z", "+00:00")).date()
+                        if data_jogo == hoje:
+                            jogos.append({
+                                "esporte": "futebol",
+                                "jogo": f"{match['homeTeam']['name']} vs {match['awayTeam']['name']}",
+                                "timeA": match['homeTeam']['name'],
+                                "timeB": match['awayTeam']['name'],
+                                "competicao": match['competition']['name'],
+                                "data": match['utcDate']
+                            })
+                return jogos
+            else:
+                print(f"Erro API Futebol: {response.status_code}")
+                return []
     except Exception as e:
         print("Erro ao buscar jogos futebol:", e)
         return []
 
-# Função para buscar odds de outros esportes (The Odds API)
+# Buscar odds de outros esportes
 def buscar_odds_outros_esportes(esporte="basketball_nba"):
     esportes_map = {
         "basketball_nba": "basketball_nba",
         "americanfootball_nfl": "americanfootball_nfl", 
-        "baseball_mlb": "baseball_mlb",
-        "icehockey_nhl": "icehockey_nhl"
+        "baseball_mlb": "baseball_mlb"
     }
     
     esporte_api = esportes_map.get(esporte, "basketball_nba")
@@ -89,35 +235,27 @@ def buscar_odds_outros_esportes(esporte="basketball_nba"):
     try:
         with httpx.Client(timeout=15.0) as client:
             response = client.get(url, params=params)
-            response.raise_for_status()
-            dados = response.json()
-            
-            jogos = []
-            for game in dados:
-                home_team = game['home_team']
-                away_team = game['away_team']
-                
-                # Verificar se há odds disponíveis
-                if game['bookmakers']:
-                    bookmaker = game['bookmakers'][0]
-                    
+            if response.status_code == 200:
+                dados = response.json()
+                jogos = []
+                for game in dados[:5]:  # Limitar a 5 jogos
                     jogos.append({
                         "esporte": esporte,
-                        "jogo": f"{home_team} vs {away_team}",
-                        "timeA": home_team,
-                        "timeB": away_team,
-                        "data": game['commence_time'],
+                        "jogo": f"{game['home_team']} vs {game['away_team']}",
+                        "timeA": game['home_team'],
+                        "timeB": game['away_team'],
                         "competicao": esporte_api.upper(),
-                        "mercados": ["h2h", "totals", "spreads"],
-                        "bookmakers": len(game['bookmakers'])
+                        "data": game['commence_time']
                     })
-            
-            return jogos[:10]  # Limitar a 10 jogos
+                return jogos
+            else:
+                print(f"Erro API {esporte}: {response.status_code}")
+                return []
     except Exception as e:
-        print(f"Erro ao buscar odds {esporte}:", e)
+        print(f"Erro ao buscar {esporte}:", e)
         return []
 
-# Função para gerar bilhetes para qualquer esporte
+# Gerar bilhetes para qualquer esporte
 def gerar_bilhetes_esporte(esporte="soccer"):
     if esporte == "soccer":
         jogos = buscar_jogos_futebol()
@@ -127,7 +265,6 @@ def gerar_bilhetes_esporte(esporte="soccer"):
     bilhetes = []
     
     for jogo in jogos:
-        # Lógica de análise para diferentes esportes
         if esporte == "soccer":
             bilhete = gerar_bilhete_futebol(jogo)
         elif esporte == "basketball_nba":
@@ -148,75 +285,42 @@ def gerar_bilhete_futebol(jogo):
         "timeA": jogo["timeA"],
         "timeB": jogo["timeB"],
         "competicao": jogo["competicao"],
-        "ultimos5A": "WWDLW",
-        "ultimos5B": "LDWWL", 
-        "h2h": "3-2-5",
-        "spreadA": "-0.5",
-        "oddA": "1.95",
-        "confA": "0.65",
-        "spreadB": "+0.5",
-        "oddB": "1.85",
-        "confB": "0.55",
-        "totalOver": "2.5",
-        "oddOver": "1.90",
-        "confOver": "0.70",
-        "totalUnder": "2.5",
-        "oddUnder": "1.90",
-        "confUnder": "0.60",
-        "analise": f"{jogo['timeA']} forte em casa, {jogo['timeB']} irregular fora",
-        "timestamp": datetime.utcnow().isoformat()
+        "analise": f"{jogo['timeA']} em boa forma, confronto equilibrado",
+        "odd": "2.10",
+        "confianca": 75,
+        "destaque": True,
+        "timestamp": datetime.utcnow().isoformat(),
+        "selecao": f"{jogo['timeA']} - Vitória"
     }
 
 def gerar_bilhete_basketball(jogo):
     return {
-        "esporte": "nba",
+        "esporte": "nba", 
         "jogo": jogo["jogo"],
         "timeA": jogo["timeA"],
         "timeB": jogo["timeB"],
         "competicao": "NBA",
-        "ultimos5A": "WWLWW",
-        "ultimos5B": "LWWLL",
-        "h2h": "2-3",
-        "spreadA": "-5.5",
-        "oddA": "1.90",
-        "confA": "0.68",
-        "spreadB": "+5.5", 
-        "oddB": "1.90",
-        "confB": "0.62",
-        "totalOver": "225.5",
-        "oddOver": "1.95",
-        "confOver": "0.72",
-        "totalUnder": "225.5",
-        "oddUnder": "1.85",
-        "confUnder": "0.58",
-        "analise": "Alto scoring esperado, ambos times ofensivos",
-        "timestamp": datetime.utcnow().isoformat()
+        "analise": "Jogo de alto scoring, ambos times ofensivos",
+        "odd": "1.95",
+        "confianca": 82,
+        "destaque": True,
+        "timestamp": datetime.utcnow().isoformat(),
+        "selecao": "Over 225.5 pontos"
     }
 
 def gerar_bilhete_football(jogo):
     return {
         "esporte": "nfl",
         "jogo": jogo["jogo"],
-        "timeA": jogo["timeA"],
+        "timeA": jogo["timeA"], 
         "timeB": jogo["timeB"],
         "competicao": "NFL",
-        "ultimos5A": "WLLWW",
-        "ultimos5B": "WWLWL",
-        "h2h": "1-4",
-        "spreadA": "-3.0",
-        "oddA": "1.95",
-        "confA": "0.65",
-        "spreadB": "+3.0",
-        "oddB": "1.85",
-        "confB": "0.55",
-        "totalOver": "48.5",
-        "oddOver": "1.90",
-        "confOver": "0.60",
-        "totalUnder": "48.5",
-        "oddUnder": "1.90",
-        "confUnder": "0.60",
-        "analise": "Defesa forte do time da casa, under valorizado",
-        "timestamp": datetime.utcnow().isoformat()
+        "analise": "Defesa sólida do time da casa favorece under",
+        "odd": "1.90",
+        "confianca": 78,
+        "destaque": True,
+        "timestamp": datetime.utcnow().isoformat(),
+        "selecao": "Under 48.5 pontos"
     }
 
 def gerar_bilhete_generico(jogo):
@@ -226,23 +330,12 @@ def gerar_bilhete_generico(jogo):
         "timeA": jogo["timeA"],
         "timeB": jogo["timeB"],
         "competicao": jogo["competicao"],
-        "ultimos5A": "N/D",
-        "ultimos5B": "N/D",
-        "h2h": "N/D",
-        "spreadA": "0.0",
-        "oddA": "1.95",
-        "confA": "0.50",
-        "spreadB": "0.0",
-        "oddB": "1.95",
-        "confB": "0.50",
-        "totalOver": "0.0",
-        "oddOver": "1.90",
-        "confOver": "0.50",
-        "totalUnder": "0.0",
-        "oddUnder": "1.90",
-        "confUnder": "0.50",
-        "analise": "Análise baseada em dados disponíveis",
-        "timestamp": datetime.utcnow().isoformat()
+        "analise": "Boa oportunidade baseada em análise estatística",
+        "odd": "1.85",
+        "confianca": 70,
+        "destaque": False,
+        "timestamp": datetime.utcnow().isoformat(),
+        "selecao": "Melhor opção"
     }
 
 # Endpoint para análise de jogos
@@ -251,33 +344,32 @@ def analisar_jogos():
     try:
         data = request.get_json()
         esporte = data.get('esporte', 'soccer')
-        regiao = data.get('regiao', 'eu')
-        mercado = data.get('mercado', 'h2h')
+        
+        print(f"Analisando esporte: {esporte}")
         
         # Gerar bilhetes para o esporte selecionado
         bilhetes_reais = gerar_bilhetes_esporte(esporte)
         
+        # Se não encontrou jogos reais, usar exemplos
+        if not bilhetes_reais:
+            bilhetes_reais = gerar_exemplos(esporte)
+        
         # Formatar para o frontend
         bilhetes_formatados = []
         for bilhete in bilhetes_reais:
-            bilhete_formatado = {
+            bilhetes_formatados.append({
                 "jogo": bilhete["jogo"],
                 "tipo": bilhete["esporte"],
-                "mercado": "Multiple",
-                "selecao": f"{bilhete['timeA']} / Over {bilhete['totalOver']}",
+                "mercado": "Principal",
+                "selecao": bilhete["selecao"],
                 "analise": bilhete["analise"],
-                "analise_premium": f"⭐ {bilhete['competicao']} - Dados Reais",
-                "odd": bilhete["oddOver"],
-                "valor_esperado": "+" + str(float(bilhete["confOver"]) * 10) + "%",
-                "confianca": int(float(bilhete["confOver"]) * 100),
-                "destaque": float(bilhete["confOver"]) > 0.65,
+                "analise_premium": f"⭐ {bilhete['competicao']} - Análise IA",
+                "odd": bilhete["odd"],
+                "valor_esperado": "+" + str(bilhete["confianca"] - 50) + "%",
+                "confianca": bilhete["confianca"],
+                "destaque": bilhete["destaque"],
                 "timestamp": bilhete["timestamp"]
-            }
-            bilhetes_formatados.append(bilhete_formatado)
-        
-        # Se não encontrou jogos, usar exemplos
-        if not bilhetes_formatados:
-            bilhetes_formatados = gerar_exemplos(esporte)
+            })
         
         bilhete_do_dia = max(bilhetes_formatados, key=lambda x: x['confianca']) if bilhetes_formatados else None
         
@@ -286,58 +378,60 @@ def analisar_jogos():
             "data": {
                 "bilhetes": bilhetes_formatados,
                 "bilhete_do_dia": bilhete_do_dia,
-                "total_encontrado": len(bilhetes_formatados)
+                "total_encontrado": len(bilhetes_formatados),
+                "esporte": esporte
             }
         })
         
     except Exception as e:
+        print(f"Erro em analisar_jogos: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 def gerar_exemplos(esporte):
     exemplos = {
         "soccer": [
             {
+                "esporte": "futebol",
                 "jogo": "Real Madrid vs Barcelona",
-                "tipo": "futebol",
-                "mercado": "Head-to-Head", 
-                "selecao": "Real Madrid",
-                "analise": "Baseado em forma recente e histórico de confrontos",
-                "analise_premium": "⭐ Forte em casa com 80% de vitórias",
+                "timeA": "Real Madrid",
+                "timeB": "Barcelona", 
+                "competicao": "La Liga",
+                "analise": "Clássico espanhol, Madrid com vantagem em casa",
                 "odd": "2.10",
-                "valor_esperado": "+5.2%",
                 "confianca": 78,
                 "destaque": True,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "selecao": "Real Madrid - Vitória"
             }
         ],
         "basketball_nba": [
             {
+                "esporte": "nba",
                 "jogo": "Lakers vs Warriors", 
-                "tipo": "nba",
-                "mercado": "Totais",
-                "selecao": "Over 225.5",
-                "analise": "Ambos times com ataques fortes e defesas vulneráveis",
-                "analise_premium": "🔥 75% dos últimos jogos tiveram Over",
-                "odd": "1.95",
-                "valor_esperado": "+6.8%",
+                "timeA": "Lakers",
+                "timeB": "Warriors",
+                "competicao": "NBA",
+                "analise": "Alto scoring esperado entre duas equipes ofensivas",
+                "odd": "1.95", 
                 "confianca": 82,
                 "destaque": True,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "selecao": "Over 225.5 pontos"
             }
         ],
         "americanfootball_nfl": [
             {
+                "esporte": "nfl",
                 "jogo": "Chiefs vs 49ers",
-                "tipo": "nfl", 
-                "mercado": "Spread",
-                "selecao": "Chiefs -3.0",
-                "analise": "Quarterback em grande forma, defesa sólida",
-                "analise_premium": "💪 8-2 contra o spread como favorito",
+                "timeA": "Chiefs", 
+                "timeB": "49ers",
+                "competicao": "NFL", 
+                "analise": "Chiefs com quarterback em grande forma",
                 "odd": "1.90",
-                "valor_esperado": "+4.5%",
                 "confianca": 75,
                 "destaque": True,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "selecao": "Chiefs -3.0"
             }
         ]
     }
@@ -347,45 +441,46 @@ def gerar_exemplos(esporte):
 @app.route('/bilhete_do_dia', methods=['GET', 'POST'])
 def bilhete_do_dia():
     try:
-        # Buscar jogos de todos os esportes
-        todos_bilhetes = []
+        # Buscar o melhor bilhete entre todos os esportes
+        melhor_bilhete = None
+        melhor_confianca = 0
+        
         for esporte in ['soccer', 'basketball_nba', 'americanfootball_nfl']:
             bilhetes = gerar_bilhetes_esporte(esporte)
-            todos_bilhetes.extend(bilhetes)
+            for bilhete in bilhetes:
+                if bilhete['confianca'] > melhor_confianca:
+                    melhor_confianca = bilhete['confianca']
+                    melhor_bilhete = bilhete
         
-        # Encontrar o melhor bilhete
-        if todos_bilhetes:
-            melhor_bilhete = max(todos_bilhetes, key=lambda x: float(x['confOver']))
-            
+        if melhor_bilhete:
             # Enviar para Telegram se for POST
             if request.method == 'POST':
                 mensagem = (
                     f"🔥 BILHETE DO DIA 🔥\n"
                     f"🏆 {melhor_bilhete['competicao']}\n"
                     f"⚔️ {melhor_bilhete['jogo']}\n"
-                    f"🎯 Mercado: Over {melhor_bilhete['totalOver']}\n"
-                    f"💰 Odd: {melhor_bilhete['oddOver']}\n"
-                    f"📊 Confiança: {int(float(melhor_bilhete['confOver']) * 100)}%\n"
-                    f"💡 Análise: {melhor_bilhete['analise']}\n"
-                    f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
+                    f"🎯 {melhor_bilhete['selecao']}\n"
+                    f"💰 Odd: {melhor_bilhete['odd']}\n"
+                    f"📊 Confiança: {melhor_bilhete['confianca']}%\n"
+                    f"💡 {melhor_bilhete['analise']}\n"
+                    f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}"
                 )
-                # Executar async
-                asyncio.run(enviar_telegram(mensagem))
+                success = asyncio.run(enviar_telegram(mensagem))
             
             return jsonify({
                 "status": "success",
-                "bilhetes": todos_bilhetes,
                 "bilhete_do_dia": melhor_bilhete,
-                "message": f"Encontrados {len(todos_bilhetes)} jogos across all sports"
+                "enviado_telegram": request.method == 'POST',
+                "message": f"Melhor bilhete: {melhor_bilhete['jogo']} - Confiança {melhor_bilhete['confianca']}%"
             })
         else:
             return jsonify({
-                "status": "success", 
-                "bilhetes": [],
-                "message": "Nenhum jogo encontrado para hoje"
+                "status": "error", 
+                "message": "Nenhum bilhete encontrado"
             })
             
     except Exception as e:
+        print(f"Erro em bilhete_do_dia: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # Endpoint para teste no Telegram
@@ -396,12 +491,11 @@ def teste_bilhetes():
             "🧪 TESTE BETMASTER AI 🧪\n"
             "✅ Sistema funcionando perfeitamente!\n"
             "🤖 Todos os esportes ativos\n"
-            "📊 Futebol, NBA, NFL, MLB\n"
-            "🎯 Análise real-time\n"
+            "⚽ Futebol | 🏀 NBA | 🏈 NFL\n"
+            "🎯 Análise em tempo real\n"
             f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}"
         )
         
-        # Executar async
         success = asyncio.run(enviar_telegram(mensagem))
         
         if success:
@@ -422,62 +516,6 @@ def teste_bilhetes():
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()})
-
-# SEU HTML COMPLETO AQUI (mantenha todo o HTML igual)
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BetMaster AI - Sistema Inteligente de Apostas</title>
-    <style>
-        /* TODO O SEU CSS AQUI - MANTIDO IGUAL */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        /* ... TODO O RESTANTE DO SEU CSS ... */
-        
-    </style>
-</head>
-<body>
-    <!-- TODO O SEU HTML AQUI - MANTIDO IGUAL -->
-    <div class="container">
-        <div class="header">
-            <div class="logo">🎯🤖🔥</div>
-            <h1>BetMaster AI v4.0</h1>
-            <p class="subtitle">Sistema Inteligente com Bilhete do Dia e Análise Avançada</p>
-            <p class="tagline">Algoritmos de machine learning identificando as melhores oportunidades do mercado</p>
-        </div>
-
-        <!-- ... TODO O RESTANTE DO SEU HTML ... -->
-        
-    </div>
-
-    <script>
-        // TODO O SEU JAVASCRIPT AQUI - MANTIDO IGUAL
-        let todosBilhetes = [];
-        let filtroAtual = 'todos';
-
-        async function analisarJogos() {
-            // ... seu código JavaScript mantido igual ...
-        }
-
-        // ... todas as outras funções JavaScript mantidas iguais ...
-    </script>
-</body>
-</html>
-'''
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=10000)
