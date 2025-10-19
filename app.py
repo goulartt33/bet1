@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, render_template_string
 import os
 import httpx
-import requests  # Vou usar requests em vez de httpx para o Telegram
+import requests
 from datetime import datetime, timedelta
 import json
 
@@ -13,6 +13,9 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 THE_ODDS_API_KEY = os.getenv("THE_ODDS_API_KEY")
+
+# Variável global para armazenar os bilhetes atuais
+bilhetes_atuais = []
 
 # Função SIMPLES para enviar mensagens no Telegram (sem async)
 def enviar_telegram(mensagem):
@@ -74,6 +77,7 @@ def home():
             button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
             .btn-telegram { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
             .btn-destaque { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+            .btn-enviar { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
             .results { max-height: 600px; overflow-y: auto; }
             .bilhete-item { 
                 border: 2px solid #e1e5e9; border-radius: 15px; padding: 20px; margin-bottom: 15px; 
@@ -88,6 +92,7 @@ def home():
             .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
             .status-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
             .esporte-title { color: white; text-align: center; margin-bottom: 10px; font-size: 1.2rem; }
+            .counter { background: #e74c3c; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
         </style>
     </head>
     <body>
@@ -115,11 +120,11 @@ def home():
                     </div>
                     <button onclick="analisarJogos()" id="analisarBtn">🤖 Analisar Jogos</button>
                     <button onclick="buscarBilheteDoDia()" class="btn-destaque">🔥 Bilhete do Dia</button>
-                    <button onclick="testarTelegram()" class="btn-telegram">📱 Testar Telegram</button>
+                    <button onclick="enviarParaTelegram()" class="btn-enviar" id="enviarBtn">📤 Enviar para Telegram</button>
                 </div>
 
                 <div class="card results">
-                    <h3>📈 Resultados</h3>
+                    <h3>📈 Resultados <span id="contadorBilhetes" class="counter">0</span></h3>
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
                         <p>Analisando dados esportivos...</p>
@@ -135,10 +140,17 @@ def home():
         </div>
 
         <script>
+            let bilhetesAtuais = [];
+            
             function showStatus(message, type = 'success') {
                 const statusDiv = document.getElementById('statusMessage');
                 statusDiv.innerHTML = `<div class="status status-${type}">${message}</div>`;
                 setTimeout(() => statusDiv.innerHTML = '', 5000);
+            }
+
+            function atualizarContador() {
+                const contador = document.getElementById('contadorBilhetes');
+                contador.textContent = bilhetesAtuais.length;
             }
 
             async function analisarJogos() {
@@ -172,9 +184,9 @@ def home():
                     const data = await response.json();
                     
                     if (data.status === 'success') {
-                        const bilhetes = data.data.bilhetes;
-                        if (bilhetes.length > 0) {
-                            resultadosContainer.innerHTML = bilhetes.map(bilhete => `
+                        bilhetesAtuais = data.data.bilhetes;
+                        if (bilhetesAtuais.length > 0) {
+                            resultadosContainer.innerHTML = bilhetesAtuais.map(bilhete => `
                                 <div class="bilhete-item ${bilhete.destaque ? 'bilhete-destaque' : ''}">
                                     <h4>${bilhete.jogo}</h4>
                                     <p><strong>🎯 ${bilhete.selecao}</strong></p>
@@ -185,11 +197,12 @@ def home():
                                     ${bilhete.destaque ? '<p style="color: #e74c3c; font-weight: bold; text-align: center;">🔥 BILHETE DO DIA</p>' : ''}
                                 </div>
                             `).join('');
-                            showStatus(`✅ Encontrados ${bilhetes.length} bilhetes para ${esporteNomes[esporte]}`, 'success');
+                            showStatus(`✅ Encontrados ${bilhetesAtuais.length} bilhetes para ${esporteNomes[esporte]}`, 'success');
                         } else {
                             resultadosContainer.innerHTML = '<p>Nenhum jogo encontrado para hoje. Mostrando exemplo...</p>';
                             showStatus('⚠️ Nenhum jogo ao vivo encontrado - Mostrando análise exemplar', 'info');
                         }
+                        atualizarContador();
                     } else {
                         resultadosContainer.innerHTML = `<p>Erro: ${data.message}</p>`;
                         showStatus(`❌ Erro: ${data.message}`, 'error');
@@ -225,18 +238,37 @@ def home():
                 }
             }
 
-            async function testarTelegram() {
+            async function enviarParaTelegram() {
+                if (bilhetesAtuais.length === 0) {
+                    showStatus('❌ Nenhum bilhete para enviar. Analise os jogos primeiro.', 'error');
+                    return;
+                }
+
                 try {
-                    showStatus('⏳ Enviando mensagem de teste para Telegram...', 'info');
-                    const response = await fetch('/teste_telegram', {method: 'POST'});
+                    const enviarBtn = document.getElementById('enviarBtn');
+                    enviarBtn.disabled = true;
+                    enviarBtn.innerHTML = '⏳ Enviando...';
+                    
+                    showStatus('⏳ Enviando bilhetes para o Telegram...', 'info');
+                    
+                    const response = await fetch('/enviar_bilhetes', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({bilhetes: bilhetesAtuais})
+                    });
+                    
                     const data = await response.json();
                     if (data.status === 'success') {
-                        showStatus('✅ Teste enviado para Telegram! Verifique seu chat.', 'success');
+                        showStatus(`✅ ${data.message}`, 'success');
                     } else {
                         showStatus(`❌ ${data.message}`, 'error');
                     }
                 } catch (error) {
-                    showStatus('❌ Erro de conexão ao testar Telegram', 'error');
+                    showStatus('❌ Erro de conexão ao enviar para Telegram', 'error');
+                } finally {
+                    const enviarBtn = document.getElementById('enviarBtn');
+                    enviarBtn.disabled = false;
+                    enviarBtn.innerHTML = '📤 Enviar para Telegram';
                 }
             }
 
@@ -442,6 +474,10 @@ def analisar_jogos():
                 "timestamp": bilhete["timestamp"]
             })
         
+        # Atualizar bilhetes atuais globalmente
+        global bilhetes_atuais
+        bilhetes_atuais = bilhetes_formatados
+        
         bilhete_do_dia = max(bilhetes_formatados, key=lambda x: x['confianca']) if bilhetes_formatados else None
         
         return jsonify({
@@ -456,6 +492,49 @@ def analisar_jogos():
         
     except Exception as e:
         print(f"Erro em analisar_jogos: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# Endpoint para enviar bilhetes para o Telegram
+@app.route('/enviar_bilhetes', methods=['POST'])
+def enviar_bilhetes():
+    try:
+        data = request.get_json()
+        bilhetes = data.get('bilhetes', [])
+        
+        if not bilhetes:
+            return jsonify({"status": "error", "message": "Nenhum bilhete para enviar"})
+        
+        print(f"Enviando {len(bilhetes)} bilhetes para o Telegram")
+        
+        # Enviar cada bilhete individualmente
+        bilhetes_enviados = 0
+        for bilhete in bilhetes:
+            mensagem = (
+                f"🎯 <b>BILHETE BETMASTER AI</b> 🎯\n\n"
+                f"🏆 <b>{bilhete.get('analise_premium', 'Análise Premium')}</b>\n"
+                f"⚔️ <b>{bilhete['jogo']}</b>\n\n"
+                f"🎯 <b>{bilhete['selecao']}</b>\n"
+                f"💰 <b>Odd: {bilhete['odd']}</b>\n"
+                f"📊 <b>Confiança: {bilhete['confianca']}%</b>\n"
+                f"💎 <b>Valor Esperado: {bilhete['valor_esperado']}</b>\n\n"
+                f"💡 {bilhete['analise']}\n\n"
+                f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}\n"
+                f"🤖 <i>Gerado por BetMaster AI</i>"
+            )
+            
+            if enviar_telegram(mensagem):
+                bilhetes_enviados += 1
+                # Pequena pausa entre mensagens para evitar spam
+                import time
+                time.sleep(1)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"✅ {bilhetes_enviados} de {len(bilhetes)} bilhetes enviados para o Telegram!"
+        })
+        
+    except Exception as e:
+        print(f"Erro em enviar_bilhetes: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 def gerar_exemplos(esporte):
@@ -582,39 +661,6 @@ def bilhete_do_dia():
             
     except Exception as e:
         print(f"Erro em bilhete_do_dia: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# Endpoint específico para teste do Telegram
-@app.route('/teste_telegram', methods=['POST'])
-def teste_telegram():
-    try:
-        mensagem = (
-            "🧪 <b>TESTE BETMASTER AI</b> 🧪\n\n"
-            "✅ <b>Sistema funcionando perfeitamente!</b>\n\n"
-            "🤖 <b>Esportes Ativos:</b>\n"
-            "⚽ Futebol\n"
-            "🏀 NBA\n" 
-            "🏈 NFL\n"
-            "⚾ MLB\n\n"
-            "🎯 <b>Análise em tempo real</b>\n"
-            f"⏰ {datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')}\n\n"
-            "🚀 <i>Pronto para gerar bilhetes!</i>"
-        )
-        
-        success = enviar_telegram(mensagem)
-        
-        if success:
-            return jsonify({
-                "status": "success",
-                "message": "✅ Mensagem de teste enviada para o Telegram!"
-            })
-        else:
-            return jsonify({
-                "status": "error", 
-                "message": "❌ Erro ao enviar para Telegram - Verifique as credenciais"
-            })
-            
-    except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # Health check
