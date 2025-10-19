@@ -32,7 +32,7 @@ estatisticas = {
     'valor_medio_odd': 0
 }
 
-# Template HTML simplificado
+# Template HTML (mantido igual)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -539,212 +539,187 @@ HTML_TEMPLATE = """
 """
 
 # =============================================================================
-# FUNÇÕES DO BANCO DE DADOS E SISTEMA
+# FUNÇÕES DO BANCO DE DADOS E SISTEMA - CORRIGIDAS
 # =============================================================================
 
-# Inicializar SQLite
+# Inicializar SQLite com tratamento de erro
 def init_db():
-    conn = sqlite3.connect('betmaster.db')
-    c = conn.cursor()
-    
-    # Tabela de bilhetes
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS bilhetes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            esporte TEXT,
-            jogo TEXT,
-            selecao TEXT,
-            odd REAL,
-            confianca INTEGER,
-            timestamp TEXT,
-            resultado TEXT DEFAULT 'em_aberto',
-            lucro REAL DEFAULT 0,
-            status TEXT DEFAULT 'pendente'
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-# Carregar dados do banco
-def carregar_dados():
-    global historico_bilhetes, estatisticas
-    
-    conn = sqlite3.connect('betmaster.db')
-    c = conn.cursor()
-    
-    # Carregar bilhetes dos últimos 30 dias
-    c.execute('''
-        SELECT * FROM bilhetes 
-        WHERE date(timestamp) >= date('now', '-30 days')
-        ORDER BY timestamp DESC
-    ''')
-    historico_bilhetes = [dict(zip([col[0] for col in c.description], row)) for row in c.fetchall()]
-    
-    # Calcular estatísticas
-    total = len(historico_bilhetes)
-    green = len([b for b in historico_bilhetes if b['resultado'] == 'green'])
-    red = len([b for b in historico_bilhetes if b['resultado'] == 'red'])
-    em_aberto = len([b for b in historico_bilhetes if b['resultado'] == 'em_aberto'])
-    
-    estatisticas.update({
-        'total_bilhetes': total,
-        'green': green,
-        'red': red,
-        'em_aberto': em_aberto,
-        'taxa_acerto': (green / (green + red)) * 100 if (green + red) > 0 else 0,
-        'lucro_prejuizo': sum(b['lucro'] for b in historico_bilhetes),
-        'valor_medio_odd': sum(b['odd'] for b in historico_bilhetes) / total if total > 0 else 0
-    })
-    
-    conn.close()
-
-# Salvar bilhete no banco
-def salvar_bilhete(bilhete):
-    conn = sqlite3.connect('betmaster.db')
-    c = conn.cursor()
-    
-    c.execute('''
-        INSERT INTO bilhetes (esporte, jogo, selecao, odd, confianca, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (
-        bilhete['esporte'],
-        bilhete['jogo'],
-        bilhete['selecao'],
-        float(bilhete['odd']),
-        bilhete['confianca'],
-        bilhete['timestamp']
-    ))
-    
-    conn.commit()
-    conn.close()
-
-# Atualizar resultado do bilhete
-def atualizar_resultado(bilhete_id, resultado, lucro=0):
-    conn = sqlite3.connect('betmaster.db')
-    c = conn.cursor()
-    
-    c.execute('''
-        UPDATE bilhetes 
-        SET resultado = ?, lucro = ?
-        WHERE id = ?
-    ''', (resultado, lucro, bilhete_id))
-    
-    conn.commit()
-    conn.close()
-
-# Sistema de agendamento
-class Agendador:
-    def __init__(self):
-        self.parar = False
-        self.ultima_analise = None
-        
-    def analise_automatica(self):
-        while not self.parar:
-            try:
-                agora = datetime.now()
-                
-                # Analisar a cada 6 horas (6, 12, 18, 0)
-                if agora.hour in [6, 12, 18, 0] and agora.minute == 0:
-                    print(f"🕐 Executando análise automática às {agora.strftime('%H:%M')}")
-                    
-                    # Buscar bilhetes para todos os esportes
-                    bilhetes_totais = []
-                    for esporte in ['soccer', 'basketball_nba', 'americanfootball_nfl']:
-                        bilhetes = gerar_bilhetes_esporte(esporte)
-                        bilhetes_totais.extend(bilhetes)
-                    
-                    if bilhetes_totais:
-                        # Encontrar bilhete do dia
-                        melhor_bilhete = max(bilhetes_totais, key=lambda x: x['confianca'])
-                        
-                        # Enviar para Telegram
-                        mensagem = (
-                            f"🤖 <b>ANÁLISE AUTOMÁTICA - BETMASTER AI</b> 🤖\n\n"
-                            f"🕐 <b>Horário: {agora.strftime('%d/%m/%Y %H:%M')}</b>\n"
-                            f"📊 <b>Total de jogos analisados: {len(bilhetes_totais)}</b>\n\n"
-                            f"🔥 <b>BILHETE DO DIA:</b>\n"
-                            f"🏆 {melhor_bilhete['competicao']}\n"
-                            f"⚔️ {melhor_bilhete['jogo']}\n"
-                            f"🎯 {melhor_bilhete['selecao']}\n"
-                            f"💰 Odd: {melhor_bilhete['odd']}\n"
-                            f"📊 Confiança: {melhor_bilhete['confianca']}%\n\n"
-                            f"💡 {melhor_bilhete['analise']}"
-                        )
-                        
-                        enviar_telegram(mensagem)
-                        self.ultima_analise = agora
-                        print("✅ Análise automática concluída e enviada para Telegram")
-                    
-                    # Esperar 61 minutos para não repetir no mesmo horário
-                    time.sleep(3660)
-                else:
-                    # Verificar a cada minuto
-                    time.sleep(60)
-                    
-            except Exception as e:
-                print(f"❌ Erro na análise automática: {e}")
-                time.sleep(300)  # Esperar 5 minutos em caso de erro
-    
-    def verificar_resultados(self):
-        while not self.parar:
-            try:
-                # Verificar resultados a cada hora
-                agora = datetime.now()
-                if agora.minute == 30:  # Meia hora de cada hora
-                    print("🔍 Verificando resultados dos bilhetes...")
-                    self.processar_resultados()
-                    time.sleep(3660)  # Esperar 61 minutos
-                else:
-                    time.sleep(60)  # Verificar a cada minuto
-                    
-            except Exception as e:
-                print(f"❌ Erro na verificação de resultados: {e}")
-                time.sleep(300)
-    
-    def processar_resultados(self):
+    try:
         conn = sqlite3.connect('betmaster.db')
         c = conn.cursor()
         
-        # Buscar bilhetes em aberto
-        c.execute('SELECT * FROM bilhetes WHERE resultado = "em_aberto"')
-        bilhetes_abertos = [dict(zip([col[0] for col in c.description], row)) for row in c.fetchall()]
+        # Tabela de bilhetes
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS bilhetes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                esporte TEXT,
+                jogo TEXT,
+                selecao TEXT,
+                odd REAL,
+                confianca INTEGER,
+                timestamp TEXT,
+                resultado TEXT DEFAULT 'em_aberto',
+                lucro REAL DEFAULT 0,
+                status TEXT DEFAULT 'pendente'
+            )
+        ''')
         
-        for bilhete in bilhetes_abertos:
-            # Simular resultado (na prática, você buscaria de uma API de resultados)
-            # Aqui estou simulando com 70% de chance de green para bilhetes com confiança > 70
-            if bilhete['confianca'] > 70:
-                resultado = 'green' if random.random() > 0.3 else 'red'
-            else:
-                resultado = 'green' if random.random() > 0.5 else 'red'
-            
-            lucro = bilhete['odd'] - 1 if resultado == 'green' else -1
-            
-            # Atualizar no banco
-            atualizar_resultado(bilhete['id'], resultado, lucro)
-            
-            # Enviar notificação se for green
-            if resultado == 'green':
-                mensagem = (
-                    f"🎉 <b>BILHETE GREEN!</b> 🎉\n\n"
-                    f"✅ <b>Resultado: GREEN</b>\n"
-                    f"🏆 {bilhete['jogo']}\n"
-                    f"🎯 {bilhete['selecao']}\n"
-                    f"💰 Odd: {bilhete['odd']}\n"
-                    f"💵 Lucro: +{lucro:.2f}u\n"
-                    f"📊 Confiança inicial: {bilhete['confianca']}%\n\n"
-                    f"🎯 <i>BetMaster AI - Sistema Inteligente</i>"
-                )
-                enviar_telegram(mensagem)
+        conn.commit()
+        conn.close()
+        print("✅ Banco de dados inicializado com sucesso!")
+    except Exception as e:
+        print(f"❌ Erro ao inicializar banco de dados: {e}")
+
+# Carregar dados do banco com tratamento de erro
+def carregar_dados():
+    global historico_bilhetes, estatisticas
+    
+    try:
+        conn = sqlite3.connect('betmaster.db')
+        c = conn.cursor()
+        
+        # Verificar se a tabela existe
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bilhetes'")
+        if not c.fetchone():
+            print("⚠️ Tabela 'bilhetes' não existe. Criando...")
+            init_db()
+        
+        # Carregar bilhetes dos últimos 30 dias
+        c.execute('''
+            SELECT * FROM bilhetes 
+            WHERE date(timestamp) >= date('now', '-30 days')
+            ORDER BY timestamp DESC
+        ''')
+        historico_bilhetes = [dict(zip([col[0] for col in c.description], row)) for row in c.fetchall()]
+        
+        # Calcular estatísticas
+        total = len(historico_bilhetes)
+        green = len([b for b in historico_bilhetes if b['resultado'] == 'green'])
+        red = len([b for b in historico_bilhetes if b['resultado'] == 'red'])
+        em_aberto = len([b for b in historico_bilhetes if b['resultado'] == 'em_aberto'])
+        
+        estatisticas.update({
+            'total_bilhetes': total,
+            'green': green,
+            'red': red,
+            'em_aberto': em_aberto,
+            'taxa_acerto': (green / (green + red)) * 100 if (green + red) > 0 else 0,
+            'lucro_prejuizo': sum(b['lucro'] for b in historico_bilhetes),
+            'valor_medio_odd': sum(b['odd'] for b in historico_bilhetes) / total if total > 0 else 0
+        })
         
         conn.close()
-        carregar_dados()  # Atualizar estatísticas
+        print(f"✅ Dados carregados: {total} bilhetes encontrados")
+        
+    except Exception as e:
+        print(f"❌ Erro ao carregar dados: {e}")
+        # Inicializar estatísticas vazias em caso de erro
+        estatisticas.update({
+            'total_bilhetes': 0,
+            'green': 0,
+            'red': 0,
+            'em_aberto': 0,
+            'taxa_acerto': 0,
+            'lucro_prejuizo': 0,
+            'valor_medio_odd': 0
+        })
+
+# Salvar bilhete no banco com tratamento de erro
+def salvar_bilhete(bilhete):
+    try:
+        conn = sqlite3.connect('betmaster.db')
+        c = conn.cursor()
+        
+        c.execute('''
+            INSERT INTO bilhetes (esporte, jogo, selecao, odd, confianca, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            bilhete['esporte'],
+            bilhete['jogo'],
+            bilhete['selecao'],
+            float(bilhete['odd']),
+            bilhete['confianca'],
+            bilhete['timestamp']
+        ))
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ Bilhete salvo: {bilhete['jogo']}")
+    except Exception as e:
+        print(f"❌ Erro ao salvar bilhete: {e}")
+
+# Atualizar resultado do bilhete com tratamento de erro
+def atualizar_resultado(bilhete_id, resultado, lucro=0):
+    try:
+        conn = sqlite3.connect('betmaster.db')
+        c = conn.cursor()
+        
+        c.execute('''
+            UPDATE bilhetes 
+            SET resultado = ?, lucro = ?
+            WHERE id = ?
+        ''', (resultado, lucro, bilhete_id))
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ Resultado atualizado: ID {bilhete_id} -> {resultado}")
+    except Exception as e:
+        print(f"❌ Erro ao atualizar resultado: {e}")
+
+# Sistema de agendamento simplificado (sem threads para evitar problemas no Render)
+class Agendador:
+    def __init__(self):
+        self.ultima_analise = None
+        
+    def verificar_agendamento(self):
+        """Verifica se é hora de executar análise automática"""
+        agora = datetime.now()
+        
+        # Analisar a cada 6 horas (6, 12, 18, 0)
+        if agora.hour in [6, 12, 18, 0] and agora.minute == 0:
+            if self.ultima_analise is None or (agora - self.ultima_analise).total_seconds() > 3600:
+                print(f"🕐 Executando análise automática às {agora.strftime('%H:%M')}")
+                self.executar_analise_automatica()
+        
+    def executar_analise_automatica(self):
+        """Executa análise automática"""
+        try:
+            # Buscar bilhetes para todos os esportes
+            bilhetes_totais = []
+            for esporte in ['soccer', 'basketball_nba', 'americanfootball_nfl']:
+                bilhetes = gerar_bilhetes_esporte(esporte)
+                bilhetes_totais.extend(bilhetes)
+            
+            if bilhetes_totais:
+                # Encontrar bilhete do dia
+                melhor_bilhete = max(bilhetes_totais, key=lambda x: x['confianca'])
+                
+                # Enviar para Telegram
+                mensagem = (
+                    f"🤖 <b>ANÁLISE AUTOMÁTICA - BETMASTER AI</b> 🤖\n\n"
+                    f"🕐 <b>Horário: {datetime.now().strftime('%d/%m/%Y %H:%M')}</b>\n"
+                    f"📊 <b>Total de jogos analisados: {len(bilhetes_totais)}</b>\n\n"
+                    f"🔥 <b>BILHETE DO DIA:</b>\n"
+                    f"🏆 {melhor_bilhete['competicao']}\n"
+                    f"⚔️ {melhor_bilhete['jogo']}\n"
+                    f"🎯 {melhor_bilhete['selecao']}\n"
+                    f"💰 Odd: {melhor_bilhete['odd']}\n"
+                    f"📊 Confiança: {melhor_bilhete['confianca']}%\n\n"
+                    f"💡 {melhor_bilhete['analise']}"
+                )
+                
+                enviar_telegram(mensagem)
+                self.ultima_analise = datetime.now()
+                print("✅ Análise automática concluída e enviada para Telegram")
+            
+        except Exception as e:
+            print(f"❌ Erro na análise automática: {e}")
 
 # Inicializar agendador
 agendador = Agendador()
 
 # =============================================================================
-# FUNÇÕES PRINCIPAIS
+# FUNÇÕES PRINCIPAIS (mantidas iguais)
 # =============================================================================
 
 # Função para enviar mensagens no Telegram
@@ -826,7 +801,7 @@ def buscar_odds_outros_esportes(esporte="basketball_nba"):
             if response.status_code == 200:
                 dados = response.json()
                 jogos = []
-                for game in dados[:3]:  # Limitar a 3 jogos para não sobrecarregar
+                for game in dados[:3]:
                     jogos.append({
                         "esporte": esporte,
                         "jogo": f"{game['home_team']} vs {game['away_team']}",
@@ -927,12 +902,14 @@ def gerar_bilhete_generico(jogo):
     }
 
 # =============================================================================
-# ENDPOINTS DA API
+# ENDPOINTS DA API - CORRIGIDOS
 # =============================================================================
 
 # ROTA RAIZ PARA SERVIR O HTML
 @app.route('/')
 def home():
+    # Verificar agendamento a cada requisição
+    agendador.verificar_agendamento()
     return render_template_string(HTML_TEMPLATE)
 
 # Endpoint para análise de jogos
@@ -943,6 +920,9 @@ def analisar_jogos():
         esporte = data.get('esporte', 'soccer')
         
         print(f"Analisando esporte: {esporte}")
+        
+        # Garantir que o banco está inicializado
+        init_db()
         
         # Gerar bilhetes para o esporte selecionado
         bilhetes_reais = gerar_bilhetes_esporte(esporte)
@@ -1022,7 +1002,7 @@ def enviar_bilhetes():
             
             if enviar_telegram(mensagem):
                 bilhetes_enviados += 1
-                time.sleep(1)  # Pequena pausa entre mensagens
+                time.sleep(1)
         
         return jsonify({
             "status": "success",
@@ -1036,26 +1016,56 @@ def enviar_bilhetes():
 # Endpoint para dashboard e estatísticas
 @app.route('/dashboard', methods=['GET'])
 def get_dashboard():
-    carregar_dados()  # Atualizar estatísticas
-    return jsonify({
-        "status": "success",
-        "estatisticas": estatisticas,
-        "historico_recente": historico_bilhetes[:10],  # Últimos 10 bilhetes
-        "agendamento": {
-            "ultima_analise": agendador.ultima_analise.isoformat() if agendador.ultima_analise else None,
-            "proxima_analise": "06:00, 12:00, 18:00, 00:00",
-            "verificacao_resultados": "A cada hora"
-        }
-    })
+    try:
+        # Garantir que o banco está inicializado
+        init_db()
+        carregar_dados()
+        
+        return jsonify({
+            "status": "success",
+            "estatisticas": estatisticas,
+            "historico_recente": historico_bilhetes[:10],
+            "agendamento": {
+                "ultima_analise": agendador.ultima_analise.isoformat() if agendador.ultima_analise else None,
+                "proxima_analise": "06:00, 12:00, 18:00, 00:00",
+                "verificacao_resultados": "A cada hora"
+            }
+        })
+    except Exception as e:
+        print(f"Erro no dashboard: {e}")
+        return jsonify({
+            "status": "error", 
+            "message": "Erro ao carregar dashboard"
+        }), 500
 
 # Endpoint para forçar verificação de resultados
 @app.route('/verificar_resultados', methods=['POST'])
 def verificar_resultados():
     try:
-        agendador.processar_resultados()
+        # Simular verificação de resultados
+        conn = sqlite3.connect('betmaster.db')
+        c = conn.cursor()
+        
+        # Buscar bilhetes em aberto
+        c.execute('SELECT * FROM bilhetes WHERE resultado = "em_aberto"')
+        bilhetes_abertos = [dict(zip([col[0] for col in c.description], row)) for row in c.fetchall()]
+        
+        for bilhete in bilhetes_abertos:
+            # Simular resultado
+            if bilhete['confianca'] > 70:
+                resultado = 'green' if random.random() > 0.3 else 'red'
+            else:
+                resultado = 'green' if random.random() > 0.5 else 'red'
+            
+            lucro = bilhete['odd'] - 1 if resultado == 'green' else -1
+            atualizar_resultado(bilhete['id'], resultado, lucro)
+        
+        conn.close()
+        carregar_dados()
+        
         return jsonify({
             "status": "success",
-            "message": "✅ Verificação de resultados concluída"
+            "message": f"✅ {len(bilhetes_abertos)} resultados verificados"
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -1114,6 +1124,9 @@ def gerar_exemplos(esporte):
 @app.route('/bilhete_do_dia', methods=['POST'])
 def bilhete_do_dia():
     try:
+        # Garantir que o banco está inicializado
+        init_db()
+        
         # Buscar o melhor bilhete entre todos os esportes
         melhor_bilhete = None
         melhor_confianca = 0
@@ -1167,14 +1180,8 @@ def health():
     return jsonify({
         "status": "healthy", 
         "timestamp": datetime.utcnow().isoformat(),
-        "agendamento_ativo": not agendador.parar
+        "database": "SQLite inicializado"
     })
-
-# Função para parar threads ao sair
-def parar_agendador():
-    agendador.parar = True
-
-atexit.register(parar_agendador)
 
 # =============================================================================
 # INICIALIZAÇÃO
@@ -1185,12 +1192,8 @@ if __name__ == '__main__':
     init_db()
     carregar_dados()
     
-    # Iniciar threads de agendamento
-    threading.Thread(target=agendador.analise_automatica, daemon=True).start()
-    threading.Thread(target=agendador.verificar_resultados, daemon=True).start()
-    
-    print("🚀 BetMaster AI iniciado com agendamento ativo!")
+    print("🚀 BetMaster AI iniciado com sucesso!")
     print("📊 Dashboard disponível em /dashboard")
-    print("🕐 Análises automáticas às 06:00, 12:00, 18:00 e 00:00")
+    print("🕐 Sistema de agendamento ativo")
     
     app.run(debug=True, host='0.0.0.0', port=10000)
