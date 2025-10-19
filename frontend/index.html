@@ -64,6 +64,20 @@
             margin-bottom: 15px;
             line-height: 1.5;
             white-space: pre-line;
+            border-left: 5px solid #ffcc00;
+        }
+
+        .bilhete h3 {
+            margin: 0 0 10px 0;
+            color: #00e6ff;
+        }
+
+        .bilhete p {
+            margin: 5px 0;
+        }
+
+        .emoji {
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -93,17 +107,26 @@
                     headers: { 'Content-Type': 'application/json' },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Erro ao buscar bilhetes!');
-                }
+                if (!response.ok) throw new Error('Erro ao buscar bilhetes!');
 
                 const data = await response.json();
 
                 if (data.bilhetes && data.bilhetes.length > 0) {
-                    data.bilhetes.forEach(bilhete => {
+                    data.bilhetes.forEach(b => {
                         const div = document.createElement('div');
                         div.className = 'bilhete';
-                        div.textContent = bilhete;
+                        
+                        // Formatação tipo Telegram
+                        div.innerHTML = `
+                            <h3>🏀 ${b.jogo}</h3>
+                            <p>📊 Últimos 5 ${b.timeA}: ${b.ultimos5A}</p>
+                            <p>📊 Últimos 5 ${b.timeB}: ${b.ultimos5B}</p>
+                            <p>📊 H2H: ${b.h2h}</p>
+                            <p>📈 Spread: ${b.spreadA} @ ${b.oddA} (conf ${b.confA})</p>
+                            <p>📈 Spread: ${b.spreadB} @ ${b.oddB} (conf ${b.confB})</p>
+                            <p>🔢 Total: Over ${b.totalOver} @ ${b.oddOver} (conf ${b.confOver})</p>
+                            <p>🔢 Total: Under ${b.totalUnder} @ ${b.oddUnder} (conf ${b.confUnder})</p>
+                        `;
                         bilhetesDiv.appendChild(div);
                     });
                 } else {
