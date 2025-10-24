@@ -1,31 +1,36 @@
-# Sistema de Apostas com Análise API Sportradar e Telegram
+# 🏀 Sistema Inteligente de Análise NBA
 
-Analisa jogos de futebol via Sportradar API, gera bilhetes com odds >=2.0 e alta probabilidade (>60%), e envia para Telegram. Suporte a múltiplos markets (3-way e Over 2.5).
+Sistema inteligente para análise estatística de jogadores da NBA e sugestões de apostas com alta probabilidade.
 
-## Aviso
-Simulação educacional. Apostas envolvem risco; sem garantias. Registre-se para trial gratuito em https://developer.sportradar.com/.
+## 🚀 Funcionalidades
 
-## Melhorias
-- Integração com Sportradar (fixtures, probabilities, odds).
-- Filtro por competições via URNs (ex: Premier = sr:competition:17).
-- Odds médias de bookmakers.
-- Tratamento de erros e loading no frontend.
+- 📊 Análise estatística em tempo real
+- 🎯 Sugestões inteligentes baseadas em machine learning
+- 📈 Histórico de desempenho dos jogadores
+- 💰 Calculadora de probabilidades
+- 📱 Interface responsiva
 
-## Requisitos
-- Python 3.8+
-- API_KEY (Sportradar trial)
-- TELEGRAM_TOKEN e CHAT_ID
+## 🛠️ Tecnologias
 
-## Instalação
-1. Clone: `git clone https://github.com/goulartt33/bet.git`
-2. Deps: `pip install -r requirements.txt`
-3. Configure .env (use URNs para ligas: Premier sr:competition:17, Serie A sr:competition:23, La Liga sr:competition:8, Bundesliga sr:competition:35, Ligue 1 sr:competition:34)
-4. Rode: `python app.py`
-5. Acesse: http://127.0.0.1:5000/
+- **Frontend**: HTML5, CSS3, JavaScript Vanilla
+- **Backend**: Node.js, Express.js
+- **API**: SportsDataIO NBA API
+- **Deploy**: Render.com
 
-## Deploy no Render
-- Web Service, Python, Build: `pip install -r requirements.txt`, Start: `gunicorn app:app`
-- Adicione env vars no dashboard.
+## ⚡ Instalação Rápida
 
-Autor: goulartt33
-Licença: MIT
+```bash
+# Clone o repositório
+git clone https://github.com/seu-usuario/nba-intelligent-system.git
+
+# Entre na pasta
+cd nba-intelligent-system
+
+# Instale as dependências
+npm install
+
+# Configure as variáveis de ambiente
+cp .env.example .env
+
+# Inicie o servidor
+npm start
